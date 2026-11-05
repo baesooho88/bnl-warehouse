@@ -5,6 +5,18 @@ import type { Coverage, DayData, Repository } from './repository'
 type DB = Dexie & {
   inbound: EntityTable<Inbound, 'id'>
   outbound: EntityTable<Outbound, 'id'>
+  meta: EntityTable<{ key: string; value: unknown }, 'key'>
+}
+
+export interface SyncState {
+  lastLogId: number
+  lastSyncedAt: string | null
+}
+
+/** 휴대폰 안 저장소. v2에서는 클라우드의 사본이며, 동기화 위치(SyncState)도 함께 보관한다. */
+export interface LocalRepository extends Repository {
+  getSyncState(): Promise<SyncState>
+  setSyncState(s: SyncState): Promise<void>
 }
 
 const byDateDescThenId = <T extends { baseDate: string; id: string }>(a: T, b: T) =>
@@ -33,12 +45,13 @@ function coverageOf(dates: string[]): Coverage | null {
   return uniq.length ? { from: uniq[0], to: uniq[uniq.length - 1], days: uniq.length } : null
 }
 
-export function createDexieRepository(dbName = 'bnl-warehouse'): Repository {
+export function createDexieRepository(dbName = 'bnl-warehouse'): LocalRepository {
   const db = new Dexie(dbName) as DB
   db.version(1).stores({
     inbound: 'id, baseDate, [port+baseDate], bl, hull, po',
     outbound: 'id, baseDate, bl, hull, po',
   })
+  db.version(2).stores({ meta: 'key' })
 
   return {
     async replaceDays(kind, baseDates, inbound, outbound) {
@@ -90,10 +103,20 @@ export function createDexieRepository(dbName = 'bnl-warehouse'): Repository {
       return dates.length ? dates[dates.length - 1] : null
     },
 
+    async getSyncState() {
+      const row = await db.meta.get('sync')
+      return (row?.value as SyncState | undefined) ?? { lastLogId: 0, lastSyncedAt: null }
+    },
+
+    async setSyncState(s) {
+      await db.meta.put({ key: 'sync', value: s })
+    },
+
     async clearAll() {
-      await db.transaction('rw', db.inbound, db.outbound, async () => {
+      await db.transaction('rw', db.inbound, db.outbound, db.meta, async () => {
         await db.inbound.clear()
         await db.outbound.clear()
+        await db.meta.clear()
       })
     },
   }
