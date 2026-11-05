@@ -5,12 +5,15 @@ import { todayIso } from './lib/dates'
 import { repo } from './repo'
 import { DetailScreen, type Detail } from './screens/DetailScreen'
 import { ListScreen } from './screens/ListScreen'
+import { SearchScreen } from './screens/SearchScreen'
+import { StatsScreen } from './screens/StatsScreen'
+import { UploadScreen } from './screens/UploadScreen'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('목록')
   const [date, setDate] = useState(() => todayIso(new Date()))
   const [detail, setDetail] = useState<Detail | null>(null)
-  const [dataVersion] = useState(0)
+  const [dataVersion, setDataVersion] = useState(0)
 
   // 오늘 데이터가 없으면 가장 최근 날짜로
   const jumpToLatest = useCallback(async () => {
@@ -24,6 +27,11 @@ export default function App() {
   const openIn = useCallback((item: Inbound) => setDetail({ kind: 'in', item }), [])
   const openOut = useCallback((item: Outbound) => setDetail({ kind: 'out', item }), [])
   const closeDetail = useCallback(() => setDetail(null), [])
+  // 업로드·삭제 후 목록이 최신 날짜를 다시 읽도록
+  const dataChanged = useCallback(() => {
+    setDataVersion((v) => v + 1)
+    void jumpToLatest()
+  }, [jumpToLatest])
 
   return (
     <div className="app">
@@ -31,7 +39,9 @@ export default function App() {
         <ListScreen date={date} onDateChange={setDate} onOpenIn={openIn} onOpenOut={openOut}
           onGoUpload={() => setTab('올리기')} dataVersion={dataVersion} />
       )}
-      {tab !== '목록' && <p className="empty">{tab} 화면은 준비 중이에요</p>}
+      {tab === '검색' && <SearchScreen onOpenIn={openIn} onOpenOut={openOut} dataVersion={dataVersion} />}
+      {tab === '통계' && <StatsScreen dataVersion={dataVersion} />}
+      {tab === '올리기' && <UploadScreen onDataChanged={dataChanged} dataVersion={dataVersion} />}
       {detail && <DetailScreen detail={detail} onBack={closeDetail} />}
       <TabBar tab={tab} onChange={setTab} />
     </div>
