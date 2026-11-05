@@ -6,3 +6,4 @@ source/
 dist-ssr/
 *.local
 *.log
+.playwright-mcp/
