@@ -1,5 +1,6 @@
 // source/ 의 원본 엑셀(개인정보 포함, git 제외)로 익명화된 테스트 자료 tests/fixtures/*.xlsx 를 만든다.
 // 마지막에 원본의 이름·전화번호·MEMO가 픽스처에 남았는지 검사하고, 남았으면 실패한다.
+import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import * as XLSX from 'xlsx'
@@ -85,7 +86,11 @@ const jobs = [
 for (const [word, outName, isOutbound] of jobs) {
   const src = pick(word)
   const wb = XLSX.read(fs.readFileSync(path.join(SRC, src)))
+  for (const v of Object.values({ ...wb.Props, ...wb.Custprops })) if (typeof v === 'string' && v.trim()) secrets.add(v.trim())
   anonymize(wb, isOutbound)
+  // 문서 속성(만든 사람·마지막 수정한 사람 등)에도 실명이 들어 있으므로 통째로 비운다
+  wb.Props = {}
+  delete wb.Custprops
   fs.writeFileSync(path.join(OUT, outName), XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }))
   console.log(`${src.normalize('NFC')} → ${OUT}/${outName}`)
 }
@@ -94,6 +99,12 @@ for (const [word, outName, isOutbound] of jobs) {
 let leaks = 0
 for (const [, outName] of jobs) {
   const wb = XLSX.read(fs.readFileSync(path.join(OUT, outName)))
+  for (const v of Object.values({ ...wb.Props, ...wb.Custprops })) {
+    if (typeof v === 'string' && [...secrets].some((s) => s.length >= 2 && v.includes(s))) {
+      leaks++
+      console.error(`잔존: ${outName} 문서 속성`)
+    }
+  }
   for (const name of wb.SheetNames) {
     eachStringCell(wb.Sheets[name], (c) => {
       for (const s of secrets) {
@@ -104,6 +115,18 @@ for (const [, outName] of jobs) {
       }
     })
   }
+}
+// git에 올라가는(또는 올라갈) 모든 텍스트 파일도 검사한다 — 문서·테스트에 원본 값을 옮겨 적는 실수 방지
+const tracked = execSync('git ls-files --cached --others --exclude-standard', { encoding: 'utf8' }).split('\n').filter(Boolean)
+for (const file of tracked) {
+  if (/\.(xlsx|png|ico)$/i.test(file) || file === 'package-lock.json' || !fs.existsSync(file)) continue
+  const lines = fs.readFileSync(file, 'utf8').split('\n')
+  lines.forEach((line, i) => {
+    if ([...secrets].some((s) => s.length >= 2 && line.includes(s))) {
+      leaks++
+      console.error(`잔존: ${file}:${i + 1}`) // 값은 출력하지 않는다
+    }
+  })
 }
 if (leaks) {
   console.error(`개인정보 ${leaks}건이 남아 있습니다. 픽스처를 커밋하지 마세요.`)

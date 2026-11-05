@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { num } from '../components/format'
 import type { Inbound, Outbound } from '../domain/types'
 import { formatMD } from '../lib/dates'
@@ -33,13 +33,20 @@ const d = (iso: string | null) => (iso ? `${iso} (${formatMD(iso)})` : '-')
 export function DetailScreen({ detail, onBack }: { detail: Detail; onBack: () => void }) {
   // 휴대폰 뒤로가기 버튼으로도 닫히게 한다
   useEffect(() => {
-    history.pushState({ detail: true }, '')
+    // StrictMode(개발 모드)에서 effect가 두 번 돌아도 기록은 한 번만 쌓는다
+    if (!history.state?.detail) history.pushState({ detail: true }, '')
     const onPop = () => onBack()
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [onBack])
 
-  const close = () => history.back()
+  // 빠르게 두 번 누르면 history.back()이 두 번 불려 앱 밖으로 나가므로 한 번만 처리한다
+  const closing = useRef(false)
+  const close = () => {
+    if (closing.current) return
+    closing.current = true
+    history.back()
+  }
   const raw = detail.item.raw
 
   return (
