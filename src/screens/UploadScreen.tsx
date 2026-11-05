@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { formatMD } from '../lib/dates'
-import { importFiles, type ImportLine } from '../lib/importFiles'
-import { repo } from '../repo'
+import type { ImportLine } from '../lib/importFiles'
+import { uploadFiles } from '../lib/upload'
+import { repo, setCurrentFileName } from '../repo'
+import { supabase } from '../storage/cloud/supabase'
+import { AdminPanel } from './AdminPanel'
 import type { Coverage } from '../storage/repository'
 import type { Kind } from '../domain/types'
 
@@ -22,7 +25,16 @@ export function UploadScreen({ onDataChanged, dataVersion }: { onDataChanged: ()
       // 저장 공간이 부족해도 Chrome이 데이터를 지우지 않도록 요청 (거절돼도 계속 진행)
       await navigator.storage?.persist?.().catch(() => false)
       const files = await Promise.all(picked.map(async (f) => ({ name: f.name, data: await f.arrayBuffer() })))
-      setLines(await importFiles(files, repo, new Date()))
+      setLines(await uploadFiles(files, {
+        online: navigator.onLine,
+        repo,
+        now: new Date(),
+        setFileName: setCurrentFileName,
+        notify: async (summary) => {
+          const { error } = await supabase.functions.invoke('notify', { body: summary })
+          if (error) throw error
+        },
+      }))
       onDataChanged()
     } catch (e) {
       setLines([{ level: 'error', text: `❌ 처리하지 못했어요 (${e instanceof Error ? e.message : String(e)})` }])
@@ -31,17 +43,10 @@ export function UploadScreen({ onDataChanged, dataVersion }: { onDataChanged: ()
     }
   }
 
-  async function clearAll() {
-    if (!window.confirm('저장된 입출고 데이터를 모두 지울까요?')) return
-    await repo.clearAll()
-    setLines([])
-    onDataChanged()
-  }
-
   return (
     <>
       <h1 className="screen-title">엑셀 올리기</h1>
-      <p className="hint">북항·신항 보세운송현황과 한화오션 출하요청서 최신 파일을 한 번에 골라 주세요. 같은 날짜는 새 파일 내용으로 바뀌어요.</p>
+      <p className="hint">북항·신항 보세운송현황과 한화오션 출하요청서 최신 파일을 한 번에 골라 주세요. 같은 날짜는 새 파일 내용으로 바뀌고, 직원 앱에 바로 반영돼요.</p>
       <label className={`btn primary file-btn${busy ? ' disabled' : ''}`}>
         {busy ? '처리 중…' : '파일 선택'}
         <input type="file" multiple disabled={busy}
@@ -70,7 +75,7 @@ export function UploadScreen({ onDataChanged, dataVersion }: { onDataChanged: ()
           )
         })}
       </dl>
-      <button className="btn danger wide" onClick={clearAll} disabled={busy}>전체 데이터 삭제</button>
+      <AdminPanel />
     </>
   )
 }

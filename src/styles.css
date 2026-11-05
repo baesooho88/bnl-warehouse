@@ -149,3 +149,32 @@ body:has(.detail) { overflow: hidden; }
 .results li { padding: 10px 12px; border-radius: 10px; margin-bottom: 6px; font-size: 14px; background: var(--surface); border: 1px solid var(--line); word-break: break-word; }
 .results li.error { border-color: var(--urgent); color: var(--urgent); }
 .btn.wide { width: 100%; margin-top: 24px; }
+
+/* v2: 로그인 */
+.login { max-width: 360px; margin: 0 auto; padding: 64px 16px 32px; text-align: center; }
+.login h1 { font-size: 24px; margin: 12px 0 24px; }
+.login form { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.login label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--muted); }
+.login input { min-height: 52px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); font-size: 20px; letter-spacing: .2em; color: var(--text); }
+.login input[type='email'] { letter-spacing: normal; font-size: 16px; }
+.login-error { color: var(--urgent); margin: 0; font-size: 14px; }
+.link { background: none; border: 0; color: var(--in); font-weight: 600; min-height: 44px; padding: 0 8px; margin-top: 16px; }
+
+/* v2: 동기화 상태 줄 */
+.statusbar { position: relative; display: flex; align-items: center; gap: 8px; padding: 8px 0 0; font-size: 13px; color: var(--muted); }
+.statusbar span { flex: 1; }
+.statusbar.error span, .statusbar.offline span { color: var(--out); }
+.statusbar .link { margin: 0; min-height: 32px; font-size: 13px; }
+.menu-btn { min-width: 44px; min-height: 36px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 18px; line-height: 1; }
+.menu { position: absolute; right: 0; top: 46px; z-index: 5; min-width: 180px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 24px rgb(0 0 0 / .12); overflow: hidden; }
+.menu-who { padding: 10px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.menu button { display: block; width: 100%; text-align: left; min-height: 44px; padding: 0 14px; border: 0; background: none; font-size: 15px; }
+
+/* v2: 알림 카드 */
+.pushcard { display: block; width: 100%; text-align: left; margin-top: 8px; padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--in); background: var(--in-soft); color: var(--text); }
+.pushcard span { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+/* v2: 관리자 PIN 변경 */
+.pin-form { display: flex; flex-wrap: wrap; gap: 8px; }
+.pin-form input { flex: 1 1 120px; min-width: 0; min-height: 48px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); letter-spacing: .2em; }
+.pin-form .btn { flex: 1 1 100%; }

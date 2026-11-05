@@ -15,6 +15,7 @@ export function ListScreen(props: {
   onOpenIn: (x: Inbound) => void
   onOpenOut: (x: Outbound) => void
   onGoUpload: () => void
+  canUpload: boolean
   dataVersion: number
 }) {
   const { date, dataVersion } = props
@@ -37,7 +38,9 @@ export function ListScreen(props: {
       {empty ? (
         <div className="empty">
           <p>이 날짜에는 데이터가 없어요</p>
-          <button className="btn primary" onClick={props.onGoUpload}>엑셀 올리러 가기</button>
+          {props.canUpload
+            ? <button className="btn primary" onClick={props.onGoUpload}>엑셀 올리러 가기</button>
+            : <p className="hint">관리자가 올리면 바로 보여요</p>}
         </div>
       ) : (
         <>
