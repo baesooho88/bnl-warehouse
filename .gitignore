@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.DS_Store
+# 원본 엑셀(이름·전화번호 포함) - git에 올리지 않음
+source/
