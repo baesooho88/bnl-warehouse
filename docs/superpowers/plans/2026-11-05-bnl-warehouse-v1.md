@@ -27,7 +27,7 @@
 2. **같은 파일을 두 번 올림** → 건수가 두 배가 되면 안 된다. (Task 6 테스트)
 3. **날짜가 아닌 시트 이름**(`Sheet1`, `11.5 `처럼 공백 포함, `요약`) → 공백은 허용해 읽고, 그 외는 그 시트만 건너뛰며 앱이 멈추면 안 된다. (Task 5 테스트)
 4. **숫자 칸의 문자열**(`"3,482.6"`, `"-"`, 빈칸) → 콤마는 숫자로, 나머지는 `null`. 통계 합계가 `NaN`이 되면 안 된다. (Task 2, Task 8 테스트)
-5. **연말·연초 업로드**(1월에 `12.30` 시트) → 전년도 날짜가 되어야 한다. (Task 2 테스트)
+5. **연말·연초 업로드**(1월에 `12.30` 시트, 또는 7월에 1월 시트를 늦게 올림) → 시트 날짜와 입항일이 미래가 되면 안 된다. (Task 2 테스트)
 
 ---
 
@@ -77,15 +77,17 @@ tests/
   `package.json` scripts에 `"test": "vitest run"`, `"fixtures": "node scripts/make-fixtures.mjs"` 추가. `vite.config.ts`의 `base`는 `process.env.BASE_PATH ?? '/'`.
 
 - [ ] **Step 2: `scripts/make-fixtures.mjs` 작성**
-  `source/`의 가장 최근 날짜 파일 3개(북항, 신항, 출하요청서 — 파일명 정렬로 마지막)를 SheetJS(`cellDates: true`)로 읽어 다음을 치환한 뒤 같은 구조(시트·병합 유지)로 `tests/fixtures/{bukhang,sinhang,outbound}.xlsx`에 쓴다:
+  `source/`의 가장 최근 날짜 파일 3개(북항, 신항, 출하요청서 — 파일명 정렬로 마지막)를 SheetJS(옵션 없이 기본값)로 읽어 다음을 치환한 뒤 같은 구조(시트·병합 유지)로 `tests/fixtures/{bukhang,sinhang,outbound}.xlsx`에 쓴다:
   - 모든 문자열 셀의 전화번호 `/01[016789][-\s]?\d{3,4}[-\s]?\d{4}/g` → `010-0000-0000`
-  - 출하요청서 `신청자명` 열 값 → `신청자A`, `신청자B` …(같은 이름은 같은 별칭), MEMO의 한글 이름(2~4자 한글 + 공백/직함 앞) → `담당자`
+  - 출하요청서 `신청자명` 열 값 → `신청자A`, `신청자B` …(같은 이름은 같은 별칭)
+  - 출하요청서 `MEMO` 열: 비어 있지 않은 칸은 **통째로** `담당자 010-0000-0000`으로 바꾼다 (이름 형태가 제각각이라 패턴 치환은 놓친다)
   - 출하요청서 2행 `작성자 : …` → `작성자 : 작성자`
   스크립트는 파일명을 NFC로 정규화해 비교한다(macOS 파일명은 NFD).
 
 - [ ] **Step 3: 픽스처 생성 후 개인정보 잔존 확인**
   Run: `npm run fixtures && node -e "…"`(각 픽스처의 모든 셀을 출력해 `grep -E '01[016789][- ]?[0-9]{3,4}'`가 `010-0000-0000` 외에 없음, 원본 신청자명이 하나도 없음을 확인)
-  Expected: 원본 이름·번호 0건.
+  추가로 원본 출하요청서의 비어 있지 않은 MEMO 값과 신청자명 목록을 모아, 픽스처 셀 문자열 중 하나라도 포함하는지 검사한다.
+  Expected: 원본 이름·번호·MEMO 문자열 0건. 하나라도 있으면 커밋하지 않는다.
 
 - [ ] **Step 4: 스모크 테스트** `tests/smoke.test.ts`: 세 픽스처를 `XLSX.read(fs.readFileSync(...))`로 열어 각 `SheetNames`가 `['11.2','11.3','11.4','11.5']`인지 확인. Run `npm test` → PASS. `npm run build` → 성공.
 
@@ -100,13 +102,13 @@ tests/
 - Test: `tests/cells.test.ts`
 
 **Interfaces:**
-- Produces: `src/domain/types.ts` — 스펙 6장의 `Port`, `Container`, `Inbound`, `Outbound`, `Kind`, `SheetResult`, `ParseResult`를 그대로. 추가로 `type CellValue = string | number | boolean | Date | null`.
+- Produces: `src/domain/types.ts` — 스펙 6장의 `Port`, `Container`, `Inbound`, `Outbound`, `Kind`, `SheetResult`, `ParseResult`를 그대로. 추가로 `type CellValue = string | number | boolean | null` (`cellDates`를 쓰지 않으므로 날짜 셀은 엑셀 시리얼 숫자로 들어온다 — 시간대에 따라 하루 밀리는 문제 회피).
 - Produces: `src/parsers/cells.ts`
   - `normHeader(v: CellValue): string` — 문자열화 후 모든 공백·줄바꿈 제거, 대문자화
   - `toText(v: CellValue): string | null` — trim, 빈 문자열은 `null`
   - `toNumber(v: CellValue): number | null` — 숫자 그대로, 문자열은 콤마 제거 후 `Number`, 실패/빈칸 `null`
   - `inferYear(month: number, now: Date): number` — `month - (now.getMonth()+1) > 6`이면 `now.getFullYear()-1`, 아니면 올해
-  - `toIsoDate(v: CellValue, now: Date): string | null` — `Date`, 엑셀 시리얼 숫자(`XLSX.SSF.parse_date_code`), `YYYY-MM-DD`/`YYYY.MM.DD` 문자열, `M월 D일`(연도는 `inferYear`) 처리, 그 외 `null`
+  - `toIsoDate(v: CellValue, now: Date, notAfter?: string): string | null` — 엑셀 시리얼 숫자(`XLSX.SSF.parse_date_code`, 시간대 무관), `YYYY-MM-DD`/`YYYY.MM.DD` 문자열, `M월 D일` 처리, 그 외 `null`. `M월 D일`의 연도: `notAfter`가 있으면 그 연도를 쓰고 결과가 `notAfter`보다 뒤면 1년을 뺀다. 없으면 `inferYear(month, now)`.
   - `parseQty(v: CellValue): { text: string | null; requested: number | null; total: number | null }`
 
 - [ ] **Step 1: 실패하는 테스트 작성** (`now = new Date(2026, 10, 5)`):
@@ -121,7 +123,8 @@ expect(toNumber(15560)).toBe(15560);
 expect(toIsoDate('2026-10-14', now)).toBe('2026-10-14');
 expect(toIsoDate('10월 31일', now)).toBe('2026-10-31');
 expect(toIsoDate('12월 30일', new Date(2027, 0, 3))).toBe('2026-12-30');
-expect(toIsoDate(new Date(2026, 10, 2), now)).toBe('2026-11-02');
+expect(toIsoDate('10월 31일', now, '2026-11-02')).toBe('2026-10-31');
+expect(toIsoDate('12월 30일', new Date(2027, 6, 1), '2027-01-03')).toBe('2026-12-30'); // 늦게 올린 파일
 expect(toIsoDate(46328, now)).toBe('2026-11-02');   // 엑셀 시리얼
 expect(toIsoDate('-', now)).toBeNull();
 expect(inferYear(12, new Date(2027, 0, 3))).toBe(2026);
@@ -179,7 +182,8 @@ expect(parseQty('1식')).toEqual({ text: '1식', requested: null, total: null })
 - 행의 bl·item이 모두 비었고 컨테이너 번호도 없으면 건너뜀.
 - bl·item이 모두 비었지만 컨테이너 번호가 있으면 직전 건의 `containers`에 추가. (실제 샘플 신항 11.3 6행이 이 경우)
 - 이어지는 행의 비고가 직전 건 `note`에 없는 값이면 ` / `로 이어 붙인다. (신항 11.3 8행 `OOG 확인필요`)
-- bl이 직전 건과 같으면 직전 건에 컨테이너 추가, 다르면 새 건.
+- bl **과 item이 모두** 직전 건과 같으면 직전 건에 컨테이너 추가, 하나라도 다르면 새 건. (같은 B/L에 품명이 다른 화물이 따로 적힌 경우 합쳐지지 않게)
+- 입항일은 `toIsoDate(값, now, baseDate)`로 변환한다(입항일은 기준일보다 뒤일 수 없음).
 - 숫자/날짜 변환 실패한 비어 있지 않은 원문은 `raw[열이름]`에 저장.
 - `id = \`${port}|${baseDate}|${n}\``(n은 0부터 건 순번).
 
@@ -189,6 +193,7 @@ expect(parseQty('1식')).toEqual({ text: '1식', requested: null, total: null })
   - 신항 `11.2` 시트 헤더 `선(기)명`이 vessel로 매핑: 첫 건 `vessel='ONE TRIUMPH'`, 시트 전체 2건(첫 건 컨테이너 8개)
   - 신항 `11.3` 시트 → 3건. 2번째 건(`PLISH7H53647`) 컨테이너 번호 `['HMMU7604614','HMMU7605903']`(B/L 미병합 행). 3번째 건(`HLCUDX3260805976`) 컨테이너 구분 `['40HC X 1','20FR X 1','40FR X 1']`, `note`에 `'OOG 확인필요'` 포함
   - 직접 만든 그리드: 헤더 + `['10월 1일','SHIP','BL1','ITEM',1,'-',…,'C1',…]` + 컨테이너만 있는 행 `[null,null,null,null,…,'C2',…]` → 1건, `containers` 번호 `['C1','C2']`, `weightKg=null`, `raw['중량']='-'`
+  - 직접 만든 그리드: 같은 B/L `BL9`, 품명 `PUMP`·`VALVE`인 병합 없는 두 행 → 2건
 - [ ] **Step 2:** → FAIL
 - [ ] **Step 3:** 구현
 - [ ] **Step 4:** → PASS
@@ -204,7 +209,7 @@ expect(parseQty('1식')).toEqual({ text: '1식', requested: null, total: null })
 
 **Interfaces:**
 - Produces: `parseOutboundSheet(grid: CellValue[][], baseDate: string, now: Date): Outbound[]`
-- Produces: `parseWorkbook(data: ArrayBuffer | Uint8Array, fileName: string, now: Date): ParseResult` — `XLSX.read(data, { cellDates: true })`. 시트마다: `detectKind` null → `{status:'skipped', message:'알 수 없는 양식'}`; `sheetBaseDate` null → `'시트 이름에서 날짜를 읽지 못함'`; `findHeaderRow` -1 → `'열 이름 줄을 못 찾음'`; 아니면 해당 파서 실행 후 `{status:'ok', count}`. 파서 예외는 잡지 않는다(파일 전체 실패 — 스펙 5.11).
+- Produces: `parseWorkbook(data: ArrayBuffer | Uint8Array, fileName: string, now: Date): ParseResult` — `XLSX.read(data)` (`cellDates` 쓰지 않음). 시트마다: `detectKind` null → `{status:'skipped', message:'알 수 없는 양식'}`; `sheetBaseDate` null → `'시트 이름에서 날짜를 읽지 못함'`; `findHeaderRow` -1 → `'열 이름 줄을 못 찾음'`; 아니면 해당 파서 실행 후 `{status:'ok', count}`. 파서 예외는 잡지 않는다(파일 전체 실패 — 스펙 5.11).
 
 출고 열 매핑: 헤더 줄의 A열이 비어 있으면 0번 열을 `seq`로 사용. `센터`→center, `BNL입하일자`→bnlInDate, `BLNO`→bl, `호선`→hull, `PO`→po, `품명`→item, `요청수량`→qty*, `중량`, `용적`, `BOXNO`→boxNo, `물류센터명도착지`→destination, `입문시간`→gateTime, `MEMO`→memo, `입고검수일자`→inspectedDate, `신청자명`→requester, `도착요청일자`→arriveDate, `LOCATION`→location. 빈 행 제외 규칙은 입고와 같음(bl·item 모두 빈 행). `sameDay = gateTime?.includes('당착') || arriveDate === baseDate`. `id = \`출고|${baseDate}|${n}\``.
 
@@ -238,7 +243,7 @@ expect(parseQty('1식')).toEqual({ text: '1식', requested: null, total: null })
   - `coverage()`: 종류별 고유 baseDate의 최소·최대·개수, 없으면 `null`
 
 - [ ] **Step 1: 실패하는 테스트** (테스트마다 고유 dbName)
-  - 신항 픽스처 해석 결과를 `replaceDays('입고-신항', 4개 날짜, inbound, [])` → `getByDate('2026-11-05').inbound.length === 1`
+  - 신항 픽스처 해석 결과를 `replaceDays('입고-신항', 4개 날짜, inbound, [])` → `getRange('2026-11-05','2026-11-05').inbound.length === 1`
   - **같은 호출을 한 번 더** → 건수 변화 없음 (Review Focus 2)
   - `replaceDays('입고-신항', ['2026-11-05'], [], [])` → 11-05 신항 0건, 11-04 신항은 그대로, 북항 데이터는 영향 없음
   - `bulkAdd`가 실패하도록 같은 id 2개를 넣은 `replaceDays` → reject, 기존 11-05 데이터 그대로 (롤백)
@@ -343,7 +348,7 @@ computeStats(data: { inbound: Inbound[]; outbound: Outbound[] }, from: string, t
 - Consumes: `repo`, `InboundCard`, `OutboundCard`, `computeStats`, `weekRange`, `monthRange`, `importFiles`
 - 검색(스펙 8.3): 입력 300ms 디바운스 → `repo.search`, 결과 카드에 기준일(`formatDay`) 표시. 결과 없으면 `검색 결과가 없어요`.
 - 통계(스펙 8.4): `이번 주 / 이번 달 / 직접 지정`(직접 지정은 `<input type="date">` 두 개). `repo.getRange` → `computeStats`. 숫자 카드, `BarChart`(라이브러리 없이 div 막대, 입고·출고 두 색, 날짜 라벨 `M.D`, 가로 스크롤 허용은 차트 영역 내부만), 상위 10 목록 두 개.
-- 올리기(스펙 8.5): `<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple>` → `file.arrayBuffer()` → `importFiles` → 결과 줄 목록. 처리 중 `처리 중…` 표시, 버튼 비활성. 저장 현황: `repo.coverage()` → `북항 11.2~11.5 (4일)` 형식, 없으면 `없음`. `[전체 데이터 삭제]` → `window.confirm('저장된 입출고 데이터를 모두 지울까요?')` 후 `clearAll`. 업로드·삭제 후 목록 탭이 최신 날짜를 다시 읽도록 `App`에 `dataVersion` 카운터를 두고 증가.
+- 올리기(스펙 8.5): `<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple>` → `navigator.storage?.persist?.()` 한 번 호출(실패해도 무시 — 저장 공간 부족 시 Chrome이 데이터를 지우지 않도록 요청) → `file.arrayBuffer()` → `importFiles` → 결과 줄 목록. 처리 중 `처리 중…` 표시, 버튼 비활성. 저장 현황: `repo.coverage()` → `북항 11.2~11.5 (4일)` 형식, 없으면 `없음`. `[전체 데이터 삭제]` → `window.confirm('저장된 입출고 데이터를 모두 지울까요?')` 후 `clearAll`. 업로드·삭제 후 목록 탭이 최신 날짜를 다시 읽도록 `App`에 `dataVersion` 카운터를 두고 증가.
 
 - [ ] **Step 1:** 구현
 - [ ] **Step 2:** `npm run build` → 성공, `npm test` → 전체 PASS
