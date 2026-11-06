@@ -18,17 +18,18 @@ export function CalendarScreen({ canEdit }: { canEdit: boolean }) {
   const [names, setNames] = useState<string[]>([])
   const current = useRef(ym)
   current.current = ym
+  const latest = useRef(0)
 
   const load = useCallback(async () => {
-    const target = current.current
+    const seq = ++latest.current // 가장 마지막 요청의 응답만 쓴다(달을 넘겼거나 같은 달을 다시 받은 경우)
     if (!navigator.onLine) return setState('offline')
     try {
-      const rows = await fetchMonth(supabase, target)
-      if (target !== current.current) return // 그사이 달을 넘겼으면 늦게 온 응답은 버린다
+      const rows = await fetchMonth(supabase, current.current)
+      if (seq !== latest.current) return
       setItems(rows)
       setState('ok')
     } catch {
-      if (target === current.current) setState(navigator.onLine ? 'error' : 'offline')
+      if (seq === latest.current) setState(navigator.onLine ? 'error' : 'offline')
     }
   }, [])
 
@@ -38,12 +39,14 @@ export function CalendarScreen({ canEdit }: { canEdit: boolean }) {
     void load()
   }, [ym, load])
 
-  // 화면이 떠 있는 동안: 실시간 변경·재연결 때 다시 받는다
+  // 화면이 떠 있는 동안: 실시간 변경·재연결·앱 복귀 때 다시 받는다(백그라운드 중 놓친 실시간 이벤트는 다시 오지 않음)
   useEffect(() => {
     const off = onVacationChange(supabase, () => void load())
     const onOnline = () => void load()
+    const onVisible = () => { if (document.visibilityState === 'visible') void load() }
     window.addEventListener('online', onOnline)
-    return () => { off(); window.removeEventListener('online', onOnline) }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { off(); window.removeEventListener('online', onOnline); document.removeEventListener('visibilitychange', onVisible) }
   }, [load])
 
   const refreshNames = useCallback(() => {
