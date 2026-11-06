@@ -23,7 +23,7 @@ const callFn = (name, body, token) =>
 
 // 1. 비로그인
 const anon = client()
-for (const t of ['inbound', 'outbound', 'upload_log']) {
+for (const t of ['inbound', 'outbound', 'upload_log', 'vacations']) {
   const { data, error } = await anon.from(t).select('*').limit(1)
   check(!!error || data.length === 0, `비로그인 ${t} 읽기 차단`)
 }
@@ -48,6 +48,12 @@ let gotEvent
 const event = new Promise((r) => { gotEvent = r })
 const channel = staff.channel('verify').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'upload_log' }, () => gotEvent(true))
 await new Promise((r) => channel.subscribe((s) => { if (s === 'SUBSCRIBED' || s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') r() }))
+let gotVacation
+const vacationEvent = new Promise((r) => { gotVacation = r })
+const vChannel = staff.channel('verify-vacations').on('postgres_changes', { event: '*', schema: 'public', table: 'vacations' }, () => gotVacation(true))
+await new Promise((r) => vChannel.subscribe((s) => { if (s === 'SUBSCRIBED' || s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') r() }))
+const vac = { date: TEST_DATE, name: '테스트A', type: '연차' }
+const countVac = async () => (await admin.from('vacations').select('id', { count: 'exact', head: true }).eq('date', TEST_DATE)).count
 
 try {
   const log0 = await maxLog(admin)
@@ -70,13 +76,24 @@ try {
   // 6. 알림은 관리자만
   check((await callFn('notify', { date: TEST_DATE, inbound: 0, outbound: 0, sameDay: 0 }, staffSession?.access_token)).status === 403, '직원이 notify 호출 → 403')
 
+  // 휴가 달력: 관리자만 쓰기, 같은 날 같은 이름 한 번, 실시간
+  check(!(await admin.from('vacations').insert(vac)).error, '관리자 휴가 추가')
+  check((await admin.from('vacations').insert(vac)).error?.code === '23505', '같은 날 같은 이름 다시 추가 → 거부(23505)')
+  check(await Promise.race([vacationEvent, new Promise((r) => setTimeout(() => r(false), 10_000))]), '직원이 휴가 변경을 실시간으로 받음(10초 안)')
+  check(!!(await staff.from('vacations').insert({ ...vac, name: '테스트B' })).error, '직원 휴가 추가 거부')
+  await staff.from('vacations').delete().eq('date', TEST_DATE)
+  check((await countVac()) === 1, '직원 휴가 삭제 무효')
+
   // 7. 직원 세션으로 공용 계정 비밀번호를 바꿔도 PIN 로그인이 살아남는다(서버가 되돌림)
   const sabotage = await staff.auth.updateUser({ password: crypto.randomUUID() })
   check((await callFn('staff-login', { pin: STAFF_PIN })).status === 200, `직원이 계정 비밀번호를 바꿔도(${sabotage.error ? '변경 거부됨' : '변경됨'}) PIN 로그인 유지`)
 } finally {
   const clean = await replace(admin, [])
   check(!clean.error && (await countTest(admin)) === 0, `테스트 날짜(${TEST_DATE}) 정리`)
+  await admin.from('vacations').delete().eq('date', TEST_DATE)
+  check((await countVac()) === 0, `테스트 휴가(${TEST_DATE}) 정리`)
   await staff.removeChannel(channel)
+  await staff.removeChannel(vChannel)
   await staff.auth.signOut({ scope: 'local' })
   await admin.auth.signOut({ scope: 'local' })
 }
