@@ -29,6 +29,9 @@ export async function staffLogin(client: SupabaseClient, pin: string): Promise<S
   }
 }
 
+/** 관리자는 아이디만 쳐도 된다: '@'가 없으면 회사 도메인을 붙인다. */
+export const adminEmail = (id: string) => (id.trim().includes('@') ? id.trim() : `${id.trim()}@ebnl.co.kr`)
+
 export async function adminLogin(client: SupabaseClient, email: string, password: string): Promise<{ ok: boolean }> {
   const { error } = await client.auth.signInWithPassword({ email, password })
   return { ok: !error }

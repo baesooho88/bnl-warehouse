@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { adminLogin, isValidPin, staffLogin } from '../auth/auth'
+import { adminEmail, adminLogin, isValidPin, staffLogin } from '../auth/auth'
 import { supabase } from '../storage/cloud/supabase'
+
+const ID_KEY = 'bnl-admin-id' // 이 기기에 저장한 관리자 아이디
 
 export function LoginScreen() {
   const [mode, setMode] = useState<'staff' | 'admin'>('staff')
   const [pin, setPin] = useState('')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(() => { try { return localStorage.getItem(ID_KEY) ?? '' } catch { return '' } })
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -21,8 +23,9 @@ export function LoginScreen() {
         setPin('')
       }
     } else {
-      const r = await adminLogin(supabase, email.trim(), password)
-      if (!r.ok) setMessage('이메일 또는 비밀번호가 맞지 않아요')
+      const r = await adminLogin(supabase, adminEmail(email), password)
+      if (!r.ok) setMessage('아이디 또는 비밀번호가 맞지 않아요')
+      else try { localStorage.setItem(ID_KEY, email.trim()) } catch { /* 저장 못 해도 로그인은 됨 */ }
     }
     setBusy(false)
   }
@@ -40,8 +43,8 @@ export function LoginScreen() {
           </label>
         ) : (
           <>
-            <label>이메일<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus /></label>
-            <label>비밀번호<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
+            <label>아이디<input autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus={!email} /></label>
+            <label>비밀번호<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus={!!email} /></label>
           </>
         )}
         {message && <p className="login-error" role="alert">{message}</p>}

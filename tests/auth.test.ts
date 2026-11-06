@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import { adminLogin, isValidPin, logout, roleOf, staffLogin, watchAuth } from '../src/auth/auth'
+import { adminEmail, adminLogin, isValidPin, logout, roleOf, staffLogin, watchAuth } from '../src/auth/auth'
 
 const session = (app: Record<string, unknown>, user: Record<string, unknown> = {}) =>
   ({ user: { app_metadata: app, user_metadata: user } }) as never
@@ -77,4 +77,10 @@ describe('watchAuth / logout', () => {
     await logout(f.client, async () => { order.push('cleanup') })
     expect(order).toEqual(['cleanup', 'signOut'])
   })
+})
+
+test('adminEmail: 아이디는 회사 도메인을 붙이고, 이메일은 그대로', () => {
+  expect(adminEmail('bsooho')).toBe('bsooho@ebnl.co.kr')
+  expect(adminEmail('  bsooho ')).toBe('bsooho@ebnl.co.kr')
+  expect(adminEmail('someone@example.com')).toBe('someone@example.com')
 })
