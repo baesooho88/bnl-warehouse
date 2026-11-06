@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { DateNav } from '../components/DateNav'
 import { tons } from '../components/format'
 import { InboundCard } from '../components/InboundCard'
-import { OutboundCard } from '../components/OutboundCard'
+import { OutboundGroups } from '../components/OutboundGroups'
 import type { Inbound, Outbound } from '../domain/types'
 import { repo } from '../repo'
 import type { DayData } from '../storage/repository'
@@ -59,7 +59,7 @@ export function ListScreen(props: {
             ))}
           </div>
           {filter !== '출고' && inbound.map((x) => <InboundCard key={x.id} item={x} onOpen={props.onOpenIn} />)}
-          {filter !== '입고' && outbound.map((x) => <OutboundCard key={x.id} item={x} onOpen={props.onOpenOut} />)}
+          {filter !== '입고' && <OutboundGroups key={props.date} items={outbound} onOpen={props.onOpenOut} />}
         </>
       )}
     </>
