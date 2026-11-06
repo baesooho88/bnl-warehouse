@@ -77,7 +77,8 @@ try {
   check((await callFn('notify', { date: TEST_DATE, inbound: 0, outbound: 0, sameDay: 0 }, staffSession?.access_token)).status === 403, '직원이 notify 호출 → 403')
 
   // 휴가 달력: 관리자만 쓰기, 같은 날 같은 이름 한 번, 실시간
-  check(!(await admin.from('vacations').insert(vac)).error, '관리자 휴가 추가')
+  const vAdd = await admin.from('vacations').insert(vac)
+  check(!vAdd.error, `관리자 휴가 추가${vAdd.error ? ` — ${vAdd.error.code} ${vAdd.error.message}` : ''}`)
   check((await admin.from('vacations').insert(vac)).error?.code === '23505', '같은 날 같은 이름 다시 추가 → 거부(23505)')
   check(await Promise.race([vacationEvent, new Promise((r) => setTimeout(() => r(false), 10_000))]), '직원이 휴가 변경을 실시간으로 받음(10초 안)')
   check(!!(await staff.from('vacations').insert({ ...vac, name: '테스트B' })).error, '직원 휴가 추가 거부')
