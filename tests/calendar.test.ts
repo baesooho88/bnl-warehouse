@@ -33,8 +33,8 @@ test('normalizeName: 앞뒤 공백만 제거, 빈 값·21자는 null', () => {
   expect(normalizeName('가'.repeat(20))).toBe('가'.repeat(20))
   expect(normalizeName('가'.repeat(21))).toBeNull()
 })
-test('cellSummary: 2명까지, 나머지는 more', () => {
+test('cellSummary: 3명까지, 나머지는 more', () => {
   expect(cellSummary([])).toEqual({ shown: [], more: 0 })
-  expect(cellSummary(['A', 'B'])).toEqual({ shown: ['A', 'B'], more: 0 })
-  expect(cellSummary(['A', 'B', 'C', 'D', 'E'])).toEqual({ shown: ['A', 'B'], more: 3 })
+  expect(cellSummary(['A', 'B', 'C'])).toEqual({ shown: ['A', 'B', 'C'], more: 0 })
+  expect(cellSummary(['A', 'B', 'C', 'D', 'E'])).toEqual({ shown: ['A', 'B', 'C'], more: 2 })
 })
