@@ -178,3 +178,41 @@ body:has(.detail) { overflow: hidden; }
 .pin-form { display: flex; flex-wrap: wrap; gap: 8px; }
 .pin-form input { flex: 1 1 120px; min-width: 0; min-height: 48px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); letter-spacing: .2em; }
 .pin-form .btn { flex: 1 1 100%; }
+
+/* 휴가 달력 */
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin: 12px 0; }
+.cal-head strong { font-size: 18px; }
+.cal-head button { min-width: 48px; min-height: 48px; border: 0; background: none; color: var(--text); font-size: 18px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.cal-w { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
+.cal-cell {
+  min-height: 64px; padding: 4px 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+  color: var(--text); display: flex; flex-direction: column; align-items: stretch; gap: 1px; text-align: left; min-width: 0;
+}
+.cal-cell.blank { background: none; border-color: transparent; }
+.cal-cell.today { border-color: var(--in); box-shadow: inset 0 0 0 1px var(--in); }
+.cal-d { font-size: 13px; font-weight: 600; }
+.sun { color: var(--urgent); }
+.sat { color: var(--in); }
+.cal-name, .cal-more { font-size: 10px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-name { border-radius: 3px; padding: 0 2px; }
+.cal-name.full { background: var(--in-soft); }
+.cal-name.half { background: var(--out-soft); }
+.cal-name.etc { background: var(--line); }
+.cal-legend { display: flex; gap: 6px; justify-content: flex-end; margin: -4px 0 6px; }
+.cal-legend .cal-name { font-size: 11px; padding: 0 6px; }
+.cal-more { color: var(--muted); }
+.sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .4); display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
+.sheet {
+  width: 100%; max-width: 640px; max-height: 80vh; overflow-y: auto; background: var(--surface);
+  border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+}
+.sheet header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.sheet-close { min-width: 48px; min-height: 48px; border: 0; background: none; color: var(--muted); font-size: 18px; }
+.muted { color: var(--muted); }
+.vac-list { list-style: none; margin: 0 0 12px; padding: 0; }
+.vac-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.vac-add { display: flex; gap: 8px; flex-wrap: wrap; }
+.vac-add input { flex: 1 1 120px; min-width: 0; min-height: 48px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font-size: 16px; }
+.vac-add select { min-height: 48px; padding: 0 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font-size: 16px; }
+.sheet-msg { color: var(--urgent); margin: 8px 0 0; }

@@ -34,6 +34,6 @@ export function normalizeName(raw: string): string | null {
   return n.length >= 1 && n.length <= 20 ? n : null
 }
 
-export function cellSummary(names: string[], max = 2): { shown: string[]; more: number } {
+export function cellSummary<T>(names: T[], max = 2): { shown: T[]; more: number } {
   return { shown: names.slice(0, max), more: Math.max(0, names.length - max) }
 }

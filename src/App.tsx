@@ -8,6 +8,7 @@ import type { Inbound, Outbound } from './domain/types'
 import { todayIso } from './lib/dates'
 import { isPushSubscribed, pushOptedOut, pushSupported, setPushOptedOut, shouldRestorePush, subscribePush, unsubscribePush } from './push/push'
 import { local, remote, repo, sync } from './repo'
+import { CalendarScreen } from './screens/CalendarScreen'
 import { DetailScreen, type Detail } from './screens/DetailScreen'
 import { ListScreen } from './screens/ListScreen'
 import { LoginScreen } from './screens/LoginScreen'
@@ -135,7 +136,7 @@ export default function App() {
   if (session === undefined) return <main className="empty">불러오는 중…</main>
   if (!session || !role) return <LoginScreen />
 
-  const tabs: Tab[] = role === 'admin' ? ['목록', '검색', '통계', '올리기'] : ['목록', '검색', '통계']
+  const tabs: Tab[] = role === 'admin' ? ['목록', '검색', '통계', '달력', '올리기'] : ['목록', '검색', '통계', '달력']
   const current = tabs.includes(tab) ? tab : '목록'
 
   return (
@@ -150,6 +151,7 @@ export default function App() {
       )}
       {current === '검색' && <SearchScreen onOpenIn={openIn} onOpenOut={openOut} dataVersion={dataVersion} />}
       {current === '통계' && <StatsScreen dataVersion={dataVersion} />}
+      {current === '달력' && <CalendarScreen canEdit={role === 'admin'} />}
       {current === '올리기' && role === 'admin' && <UploadScreen onDataChanged={dataChanged} dataVersion={dataVersion} />}
       {detail && <DetailScreen detail={detail} onBack={closeDetail} />}
       <TabBar tabs={tabs} tab={current} onChange={setTab} />
