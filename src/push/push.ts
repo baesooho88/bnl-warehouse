@@ -42,3 +42,11 @@ export async function isPushSubscribed(): Promise<boolean> {
   const reg = await navigator.serviceWorker.getRegistration()
   return Boolean(await reg?.pushManager.getSubscription())
 }
+
+/** PIN 변경 등으로 재로그인하면 구독이 지워져 있다. 권한은 이미 있고 사용자가 직접 끈 게 아니면 다시 켠다. */
+export const shouldRestorePush = (s: { permission: NotificationPermission; subscribed: boolean; optedOut: boolean }) =>
+  s.permission === 'granted' && !s.subscribed && !s.optedOut
+
+const OPT_OUT = 'bnl-push-off'
+export const pushOptedOut = () => { try { return localStorage.getItem(OPT_OUT) === '1' } catch { return false } }
+export const setPushOptedOut = (off: boolean) => { try { if (off) localStorage.setItem(OPT_OUT, '1'); else localStorage.removeItem(OPT_OUT) } catch { /* 무시 */ } }

@@ -107,4 +107,21 @@ describe('createSync', () => {
     await sync.syncOnce()
     expect(states).toEqual(['syncing', 'idle'])
   })
+
+  test('로그아웃 정리(reset 후 clearAll)가 진행 중 동기화와 겹쳐도 동기화 위치를 되살리지 않는다', async () => {
+    const { remote, local, sync } = await setup()
+    await upload(remote, '입고-북항')
+    await sync.syncOnce()
+    expect((await local.getSyncState()).lastLogId).toBe(1)
+    let release!: () => void
+    const gate = new Promise<void>((r) => { release = r })
+    const orig = remote.fetchLogsAfter.bind(remote)
+    remote.fetchLogsAfter = async (id) => { await gate; return orig(id) }
+    const inflight = sync.syncOnce()
+    const cleanup = (async () => { await sync.reset(); await local.clearAll() })()
+    release()
+    await inflight; await cleanup
+    expect((await local.getSyncState()).lastLogId).toBe(0)
+    expect(await count(local)).toBe(0)
+  })
 })

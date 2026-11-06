@@ -19,6 +19,7 @@ export function createSync(deps: { local: LocalRepository; remote: Remote; now?:
   const listeners = new Set<(s: SyncStatus) => void>()
   let running: Promise<void> | null = null
   let again = false
+  let generation = 0 // reset()마다 증가: 그 전에 시작한 동기화는 로컬에 쓰지 않는다
 
   const set = (s: SyncStatus) => {
     status = s
@@ -36,12 +37,15 @@ export function createSync(deps: { local: LocalRepository; remote: Remote; now?:
   }
 
   async function runOnce() {
+    const gen = generation
+    const stale = () => gen !== generation
     const state = await local.getSyncState()
     set({ ...status, state: 'syncing', lastSyncedAt: state.lastSyncedAt })
     try {
       let lastLogId = state.lastLogId
       if (lastLogId === 0) {
         const all = await remote.fetchAll()
+        if (stale()) return
         await replaceAll(all.inbound, all.outbound)
         lastLogId = all.maxLogId
       } else {
@@ -55,10 +59,12 @@ export function createSync(deps: { local: LocalRepository; remote: Remote; now?:
           }
           // 모두 받은 뒤에 반영해서, 중간에 실패해도 로컬이 반쯤 바뀌지 않게 한다
           const fetched = await Promise.all([...changed].map(async ([kind, dates]) => ({ kind, dates: [...dates], data: await remote.fetchDays(kind, [...dates]) })))
+          if (stale()) return
           for (const f of fetched) await local.replaceDays(f.kind, f.dates, f.data.inbound, f.data.outbound)
           lastLogId = logs[logs.length - 1].id
         }
       }
+      if (stale()) return
       const lastSyncedAt = now().toISOString()
       await local.setSyncState({ lastLogId, lastSyncedAt })
       set({ state: 'idle', lastSyncedAt })
@@ -73,17 +79,28 @@ export function createSync(deps: { local: LocalRepository; remote: Remote; now?:
       return running
     }
     running = (async () => {
-      do {
-        again = false
-        await runOnce()
-      } while (again)
-      running = null
+      try {
+        do {
+          again = false
+          await runOnce()
+        } while (again)
+      } finally {
+        running = null
+      }
     })()
     return running
   }
 
+  /** 로그아웃 정리 전에 부른다: 진행 중인 동기화가 끝나길 기다리고, 그 결과는 로컬에 쓰지 않게 한다. */
+  async function reset() {
+    generation++
+    again = false
+    await running?.catch(() => {})
+  }
+
   return {
     syncOnce,
+    reset,
     status: () => status,
     onChange(cb: (s: SyncStatus) => void) {
       listeners.add(cb)

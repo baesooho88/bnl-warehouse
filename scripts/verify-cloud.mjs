@@ -69,6 +69,10 @@ try {
 
   // 6. 알림은 관리자만
   check((await callFn('notify', { date: TEST_DATE, inbound: 0, outbound: 0, sameDay: 0 }, staffSession?.access_token)).status === 403, '직원이 notify 호출 → 403')
+
+  // 7. 직원 세션으로 공용 계정 비밀번호를 바꿔도 PIN 로그인이 살아남는다(서버가 되돌림)
+  const sabotage = await staff.auth.updateUser({ password: crypto.randomUUID() })
+  check((await callFn('staff-login', { pin: STAFF_PIN })).status === 200, `직원이 계정 비밀번호를 바꿔도(${sabotage.error ? '변경 거부됨' : '변경됨'}) PIN 로그인 유지`)
 } finally {
   const clean = await replace(admin, [])
   check(!clean.error && (await countTest(admin)) === 0, `테스트 날짜(${TEST_DATE}) 정리`)

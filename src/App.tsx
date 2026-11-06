@@ -6,7 +6,7 @@ import { StatusBar } from './components/StatusBar'
 import { TabBar, type Tab } from './components/TabBar'
 import type { Inbound, Outbound } from './domain/types'
 import { todayIso } from './lib/dates'
-import { isPushSubscribed, pushSupported, subscribePush, unsubscribePush } from './push/push'
+import { isPushSubscribed, pushOptedOut, pushSupported, setPushOptedOut, shouldRestorePush, subscribePush, unsubscribePush } from './push/push'
 import { local, remote, repo, sync } from './repo'
 import { DetailScreen, type Detail } from './screens/DetailScreen'
 import { ListScreen } from './screens/ListScreen'
@@ -47,6 +47,7 @@ export default function App() {
   // 로그아웃·세션 무효화: 이 폰의 알림 구독과 입출고 사본을 지운다
   const cleanup = useCallback(async () => {
     await unsubscribePush(supabase)
+    await sync.reset() // 진행 중 동기화가 지운 뒤에 옛 위치를 되살리지 않게 (clearAll 바로 앞)
     await local.clearAll()
     setDetail(null)
     setTab('목록')
@@ -78,7 +79,12 @@ export default function App() {
     const offLog = remote.onNewLog(run)
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('online', run)
-    void isPushSubscribed().then(setPushOn)
+    void isPushSubscribed().then(async (subscribed) => {
+      if (VAPID_KEY && pushSupported() && shouldRestorePush({ permission: Notification.permission, subscribed, optedOut: pushOptedOut() })) {
+        subscribed = (await subscribePush(supabase, VAPID_KEY).catch(() => 'unsupported' as const)) === 'subscribed'
+      }
+      setPushOn(subscribed)
+    })
     return () => {
       offStatus()
       offLog()
@@ -112,12 +118,14 @@ export default function App() {
   }, [jumpToLatest])
 
   async function enablePush() {
+    setPushOptedOut(false)
     const r = await subscribePush(supabase, VAPID_KEY).catch(() => 'unsupported' as const)
     setPermission(pushSupported() ? Notification.permission : 'denied')
     setPushOn(r === 'subscribed')
   }
   async function togglePush() {
     if (pushOn) {
+      setPushOptedOut(true)
       await unsubscribePush(supabase)
       setPushOn(false)
     } else await enablePush()
