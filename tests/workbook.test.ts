@@ -53,3 +53,29 @@ describe('parseWorkbook', () => {
     expect(parseWorkbook(toBytes(wb), 'x.xlsx', now).sheets[0]).toMatchObject({ status: 'skipped', message: '열 이름 줄을 못 찾음' })
   })
 })
+
+// 2026-11 이후 양식: 열 이름이 짧아지고, 특수 자재는 같은 날짜의 '(인바)' 시트로 따로 온다
+const newFormatSheet = (rows: (string | number)[][]) => XLSX.utils.aoa_to_sheet([
+  ['일일출하요청서'],
+  [null, '11/10', null, null, null, null, null, null, null, null, null, '당일착(도착일):', null, '11/10'],
+  [null, '센터', '입하', 'BL No', '호선', 'PO', '품명', '수량', '중량', '용적', 'BOX NO', '도착지', '입문', 'MEMO', '검수', '신청자명', '도착', 'Location'],
+  ...rows.map((r) => [r[0], 'BNL', '2026-10-01', `BL${r[0]}`, '1234', 'PO1', r[1], '1/2', '100', '1', 'B1', r[2], r[3], '', '-', '테스트', r[4], 'LOC']),
+])
+
+describe('새 양식(2026-11~)', () => {
+  test('짧아진 열 이름도 읽는다: 도착지·입문·도착·수량', () => {
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, newFormatSheet([[1, '품목A', '테스트도착지', '09시', '2026-11-11']]), '11.10')
+    const [o] = parseWorkbook(toBytes(wb), 'x.xlsx', now).outbound
+    expect(o).toMatchObject({ seq: 1, destination: '테스트도착지', gateTime: '09시', arriveDate: '2026-11-11', qtyText: '1/2', sameDay: false })
+  })
+  test("'11.10 (인바)' 시트도 11.10으로 읽고, 같은 날짜 시트끼리 id가 겹치지 않는다", () => {
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, newFormatSheet([[1, '품목A', '가', '09시', '2026-11-11'], [2, '품목B', '가', '10시', '2026-11-11']]), '11.10')
+    XLSX.utils.book_append_sheet(wb, newFormatSheet([[21, 'INVAR PLATE', '나', '09시', '2026-11-11']]), '11.10 (인바)')
+    const r = parseWorkbook(toBytes(wb), 'x.xlsx', now)
+    expect(r.sheets.map((s) => [s.status, s.baseDate])).toEqual([['ok', '2026-11-10'], ['ok', '2026-11-10']])
+    expect(r.outbound.map((o) => o.seq)).toEqual([1, 2, 21])
+    expect(new Set(r.outbound.map((o) => o.id)).size).toBe(3)
+  })
+})

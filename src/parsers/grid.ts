@@ -51,7 +51,7 @@ export function headerIndex(row: CellValue[]): Map<string, number> {
 }
 
 export function sheetBaseDate(sheetName: string, now: Date): string | null {
-  const m = sheetName.trim().match(/^(\d{1,2})\.(\d{1,2})$/)
+  const m = sheetName.trim().match(/^(\d{1,2})\.(\d{1,2})(?:\s*\([^)]*\))?$/) // '11.10 (인바)'처럼 괄호 꼬리 허용
   if (!m) return null
   const month = +m[1]
   const day = +m[2]

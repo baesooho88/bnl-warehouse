@@ -20,7 +20,8 @@ export function parseWorkbook(data: ArrayBuffer | Uint8Array, fileName: string, 
     if (findHeaderRow(grid) < 0) { skip('열 이름 줄을 못 찾음'); continue }
 
     if (kind === '출고') {
-      const list = parseOutboundSheet(grid, baseDate, now)
+      // 같은 날짜 시트(예: '11.10'과 '11.10 (인바)')는 이어 붙이므로 id 번호를 이어 간다
+      const list = parseOutboundSheet(grid, baseDate, now, result.outbound.filter((x) => x.baseDate === baseDate).length)
       result.outbound.push(...list)
       result.sheets.push({ kind, sheetName, baseDate, status: 'ok', count: list.length })
     } else {
