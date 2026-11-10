@@ -1,5 +1,6 @@
 import type { Outbound } from '../domain/types'
 import { formatMD } from '../lib/dates'
+import { needsInspection } from '../lib/urgent'
 import { kg } from './format'
 
 export function OutboundCard({ item, onOpen }: { item: Outbound; onOpen: (x: Outbound) => void }) {
@@ -8,6 +9,7 @@ export function OutboundCard({ item, onOpen }: { item: Outbound; onOpen: (x: Out
       <div className="top">
         <span className="badge out">출고</span>
         {item.sameDay && <span className="badge urgent">당일착</span>}
+        {needsInspection(item) && <span className="badge inspect">검사필요</span>}
         <span>{item.destination ?? '도착지 없음'}{item.gateTime && ` · ${item.gateTime}`}</span>
       </div>
       <div className="item">{item.item ?? '(품명 없음)'}</div>

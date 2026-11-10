@@ -3,6 +3,7 @@ import { num } from '../components/format'
 import type { Inbound, Outbound } from '../domain/types'
 import { formatMD } from '../lib/dates'
 import { splitPhones } from '../lib/phone'
+import { needsInspection } from '../lib/urgent'
 
 export type Detail = { kind: 'in'; item: Inbound } | { kind: 'out'; item: Outbound }
 
@@ -98,7 +99,7 @@ function OutboundBody({ x }: { x: Outbound }) {
         ['상차일', d(x.baseDate)], ['도착 요청일', d(x.arriveDate)], ['입문시간', x.gateTime], ['도착지', x.destination],
         ['순번', num(x.seq)], ['센터', x.center], ['BNL 입하일자', d(x.bnlInDate)], ['B/L', x.bl], ['호선', x.hull], ['PO', x.po],
         ['요청수량', x.qtyText], ['중량(kg)', num(x.weightKg)], ['용적(CBM)', num(x.cbm)], ['BOX NO', x.boxNo],
-        ['MEMO', <WithPhones text={x.memo} />], ['입고 검수 일자', d(x.inspectedDate)], ['신청자', x.requester], ['Location', x.location],
+        ['MEMO', <WithPhones text={x.memo} />], ['입고 검수 일자', needsInspection(x) ? <span className="badge inspect">검사필요</span> : d(x.inspectedDate)], ['신청자', x.requester], ['Location', x.location],
       ]} />
     </>
   )

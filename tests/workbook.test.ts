@@ -100,3 +100,13 @@ describe('배차 시트', () => {
     expect(r.sheets.at(-1)?.message).toBe('읽지 못한 줄: ???, 순번 9 출고에 없음')
   })
 })
+
+test("검수 칸의 '대기' 원문은 raw에 남아 검사필요로 이어진다", async () => {
+  const { needsInspection } = await import('../src/lib/urgent')
+  const wb = XLSX.utils.book_new()
+  const ws = newFormatSheet([[1, '품목A', '가', '09시', '2026-11-11']])
+  XLSX.utils.sheet_add_aoa(ws, [['검수대기']], { origin: 'O4' })
+  XLSX.utils.book_append_sheet(wb, ws, '11.10')
+  const [o] = parseWorkbook(toBytes(wb), 'x.xlsx', now).outbound
+  expect(needsInspection(o)).toBe(true)
+})

@@ -16,6 +16,9 @@ export function InboundCard({ item, onOpen }: { item: Inbound; onOpen: (x: Inbou
       <div className="meta">
         {item.qty ?? '-'}개 · {kg(item.weightKg)} · 컨테이너 {item.containers.length} ›
       </div>
+      {item.containers.length > 0 && (
+        <div className="cntr-list">{item.containers.map((c, i) => <span key={`${c.no}${i}`} className="cntr">{c.no}{c.type && <small> {c.type}</small>}</span>)}</div>
+      )}
       {item.note && <div className="note-box"><b>비고</b> {item.note}</div>}
     </button>
   )

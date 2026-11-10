@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Outbound } from '../domain/types'
 import { formatDay } from '../lib/dates'
 import { groupByDispatch, groupOutbound, seqLabel, vehicleChips } from '../lib/outboundGroups'
+import { needsInspection } from '../lib/urgent'
 import { kg, tons } from './format'
 
 /**
@@ -25,6 +26,7 @@ export function OutboundGroups({ items, onOpen }: { items: Outbound[]; onOpen: (
             <span className="og-line1">
               {x.seq !== null && <span className="og-seq">{x.seq}</span>}
               {x.sameDay && <span className="badge urgent">당일착</span>}
+              {needsInspection(x) && <span className="badge inspect">검사필요</span>}
               {x.gateTime && <b>{x.gateTime}</b>}
               <span className="og-item">{x.item ?? '(품명 없음)'}</span>
             </span>
@@ -41,11 +43,13 @@ export function OutboundGroups({ items, onOpen }: { items: Outbound[]; onOpen: (
       <div className="og">
         {groupByDispatch(items).map((s) => (
           <div key={`${s.arrive}|${s.invar}`}>
-            <h3 className="og-section">
+            <button className="og-section" aria-expanded={!open.has(`h|${s.arrive}|${s.invar}`)} onClick={() => toggle(`h|${s.arrive}|${s.invar}`)}>
+              <span className="og-arrow" aria-hidden>{open.has(`h|${s.arrive}|${s.invar}`) ? '▶' : '▼'}</span>
               {s.arrive ? `${formatDay(s.arrive)} 도착` : '당착'}
               {s.invar && <span className="badge invar">INVAR</span>}
-            </h3>
-            {s.groups.map((g) => group(`d|${s.arrive}|${s.invar}|${g.key}`, (
+              <span className="og-section-sum">{s.groups.reduce((n, g) => n + g.items.length, 0)}건</span>
+            </button>
+            {!open.has(`h|${s.arrive}|${s.invar}`) && s.groups.map((g) => group(`d|${s.arrive}|${s.invar}|${g.key}`, (
               // 출고 담당자는 '몇 번에 무슨 차'를 본다: 순번 먼저, 그 옆에 차량, 아래에 도착지
               <span className="og-disp">
                 <span className="og-disp1">
