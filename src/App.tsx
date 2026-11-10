@@ -6,6 +6,7 @@ import { StatusBar } from './components/StatusBar'
 import { TabBar, type Tab } from './components/TabBar'
 import type { Inbound, Outbound } from './domain/types'
 import { todayIso } from './lib/dates'
+import { swipeTab } from './lib/swipe'
 import { isPushSubscribed, pushOptedOut, pushSupported, setPushOptedOut, shouldRestorePush, subscribePush, unsubscribePush } from './push/push'
 import { local, remote, repo, sync } from './repo'
 import { CalendarScreen } from './screens/CalendarScreen'
@@ -27,7 +28,9 @@ const dateParam = () => {
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined) // undefined = 확인 중
   const role: Role = roleOf(session ?? null)
-  const [tab, setTab] = useState<Tab>('목록')
+  const [tab, setTabState] = useState<Tab>('목록')
+  const [slide, setSlide] = useState<'' | 'from-right' | 'from-left'>('')
+  const touch = useRef<{ x: number; y: number } | null>(null)
   const [date, setDate] = useState(() => dateParam() ?? todayIso(new Date()))
   const [detail, setDetail] = useState<Detail | null>(null)
   const [dataVersion, setDataVersion] = useState(0)
@@ -51,7 +54,7 @@ export default function App() {
     await sync.reset() // 진행 중 동기화가 지운 뒤에 옛 위치를 되살리지 않게 (clearAll 바로 앞)
     await local.clearAll()
     setDetail(null)
-    setTab('목록')
+    setTabState('목록')
     setDataVersion((v) => v + 1)
   }, [])
 
@@ -101,7 +104,7 @@ export default function App() {
       if (e.data?.type === 'open-date' && /^\d{4}-\d{2}-\d{2}$/.test(e.data.date)) {
         fixedDate.current = true
         setDetail(null)
-        setTab('목록')
+        setTabState('목록')
         setDate(e.data.date)
       }
     }
@@ -138,23 +141,41 @@ export default function App() {
 
   const tabs: Tab[] = role === 'admin' ? ['목록', '검색', '통계', '달력', '올리기'] : ['목록', '검색', '통계', '달력']
   const current = tabs.includes(tab) ? tab : '목록'
+  const goTab = (t: Tab) => {
+    if (t === current) return
+    setSlide(tabs.indexOf(t) > tabs.indexOf(current) ? 'from-right' : 'from-left')
+    setTabState(t)
+  }
+  const onTouchStart = (e: React.TouchEvent) => {
+    // 팝업(휴가 입력 등) 안에서 민 것은 탭 넘기기가 아니다
+    touch.current = (e.target as Element).closest('[role=dialog]') ? null : { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!touch.current) return
+    const t = e.changedTouches[0]
+    const next = swipeTab(tabs, current, { dx: t.clientX - touch.current.x, dy: t.clientY - touch.current.y, startX: touch.current.x, width: window.innerWidth })
+    touch.current = null
+    if (next) goTab(next)
+  }
 
   return (
     <div className="app">
       <StatusBar status={status} onRetry={() => void sync.syncOnce()} pushOn={pushSupported() ? pushOn : null}
         onTogglePush={() => void togglePush()} onLogout={() => void logout(supabase, cleanup)}
         roleLabel={role === 'admin' ? '관리자로 로그인됨' : '직원으로 로그인됨'} />
+      <div key={current} className={`tab-page ${slide}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {current === '목록' && permission === 'default' && pushOn === false && VAPID_KEY && <PushCard onEnable={() => void enablePush()} />}
       {current === '목록' && (
         <ListScreen date={date} onDateChange={changeDate} onOpenIn={openIn} onOpenOut={openOut}
-          onGoUpload={() => setTab(role === 'admin' ? '올리기' : '목록')} canUpload={role === 'admin'} dataVersion={dataVersion} />
+          onGoUpload={() => goTab(role === 'admin' ? '올리기' : '목록')} canUpload={role === 'admin'} dataVersion={dataVersion} />
       )}
       {current === '검색' && <SearchScreen onOpenIn={openIn} onOpenOut={openOut} dataVersion={dataVersion} />}
       {current === '통계' && <StatsScreen dataVersion={dataVersion} />}
       {current === '달력' && <CalendarScreen canEdit={role === 'admin'} />}
       {current === '올리기' && role === 'admin' && <UploadScreen onDataChanged={dataChanged} dataVersion={dataVersion} />}
+      </div>
       {detail && <DetailScreen detail={detail} onBack={closeDetail} />}
-      <TabBar tabs={tabs} tab={current} onChange={setTab} />
+      <TabBar tabs={tabs} tab={current} onChange={goTab} />
     </div>
   )
 }

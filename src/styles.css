@@ -231,3 +231,11 @@ body:has(.detail) { overflow: hidden; }
 .og-chev { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--muted); }
 .og-line1 .badge, .og-head .badge { flex-shrink: 0; white-space: nowrap; }
 .login-logo { max-width: 70%; height: auto; }
+
+/* 탭 넘길 때 밀려 들어오기 */
+.tab-page { min-height: calc(100vh - var(--tab-h) - 80px); touch-action: pan-y; }
+.tab-page.from-right { animation: slide-from-right .22s ease-out; }
+.tab-page.from-left { animation: slide-from-left .22s ease-out; }
+@keyframes slide-from-right { from { transform: translateX(32px); opacity: .4; } }
+@keyframes slide-from-left { from { transform: translateX(-32px); opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .tab-page.from-right, .tab-page.from-left { animation: none; } }
