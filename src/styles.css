@@ -260,3 +260,7 @@ body:has(.detail) { overflow: hidden; }
 .vac-list li.event b { color: #0b8043; margin-right: 4px; }
 .vac-mode { margin: 8px 0; }
 .vac-add input[type=time] { flex: 0 0 auto; }
+
+.vac-text { flex: 1; min-width: 0; min-height: 44px; border: 0; background: none; color: var(--text); text-align: left; font-size: 16px; padding: 0; }
+.vac-pen { color: var(--muted); font-size: 13px; }
+.vac-list li.editing { background: var(--in-soft); border-radius: 8px; padding-left: 6px; }

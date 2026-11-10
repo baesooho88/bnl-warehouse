@@ -28,6 +28,17 @@ export async function addVacation(client: SupabaseClient, v: { date: string; nam
   return 'ok'
 }
 
+/** 관리자 전용(RLS). 날짜는 그대로, 이름·종류·시간만 바꾼다. 같은 날 같은 이름이 있으면 'duplicate'. */
+export async function updateVacation(client: SupabaseClient, id: number, v: { date: string; name: string; type: EntryType; time?: string | null }): Promise<'ok' | 'duplicate'> {
+  const event = v.type === '일정'
+  const name = normalizeName(v.name, event ? 30 : 20)
+  if (!name) throw new Error('이름이 비었거나 너무 길어요')
+  const { error } = await client.from('vacations').update({ name, type: v.type, time: event ? v.time || null : null }).eq('id', id)
+  if (error?.code === '23505') return 'duplicate'
+  if (error) throw new Error(error.message)
+  return 'ok'
+}
+
 export async function deleteVacation(client: SupabaseClient, id: number): Promise<void> {
   const { error } = await client.from('vacations').delete().eq('id', id)
   if (error) throw new Error(error.message)

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatDay } from '../lib/dates'
 import { dayEntries, normalizeName, suggestNames, VACATION_TYPES, type VacationType } from '../vacation/calendar'
-import { addVacation, deleteVacation, type Vacation } from '../vacation/vacations'
+import { addVacation, deleteVacation, updateVacation, type Vacation } from '../vacation/vacations'
 import { supabase } from '../storage/cloud/supabase'
 
 /** 날짜 팝업. items는 달력이 가진 목록에서 그날 것만 받으므로 실시간 변경도 그대로 반영된다. */
@@ -17,6 +17,7 @@ export function VacationSheet({ date, items, canEdit, names, onClose, onChanged 
   const [type, setType] = useState<VacationType>('연차')
   const [mode, setMode] = useState<'휴가' | '일정'>('휴가')
   const [time, setTime] = useState('')
+  const [editing, setEditing] = useState<number | null>(null) // 고치는 중인 줄 id
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -49,9 +50,19 @@ export function VacationSheet({ date, items, canEdit, names, onClose, onChanged 
     }
   }
 
-  async function add() {
+  const reset = () => { setName(''); setTime(''); setEditing(null) }
+  // 줄을 누르면 아래 입력 칸으로 불러와 고친다(삭제 후 다시 넣지 않아도 되게)
+  const startEdit = (v: Vacation) => {
+    setEditing(v.id)
+    setMessage('')
+    setName(v.name)
+    if (v.type === '일정') { setMode('일정'); setTime(v.time ?? '') } else { setMode('휴가'); setType(v.type) }
+  }
+
+  async function save() {
     const v = mode === '일정' ? { date, name, type: '일정' as const, time } : { date, name, type }
-    if ((await run(() => addVacation(supabase, v))) === 'ok') { setName(''); setTime('') }
+    const r = await run(() => (editing === null ? addVacation(supabase, v) : updateVacation(supabase, editing, v)))
+    if (r === 'ok') reset()
   }
 
   return (
@@ -66,9 +77,11 @@ export function VacationSheet({ date, items, canEdit, names, onClose, onChanged 
         ) : (
           <ul className="vac-list">
             {dayEntries(items).map((v) => (
-              <li key={v.id} className={v.type === '일정' ? 'event' : undefined}>
-                <span>{v.type === '일정' ? <><b>{v.time ?? '종일'}</b> {v.name}</> : <>{v.name} · {v.type}</>}</span>
-                {canEdit && <button className="btn danger" disabled={busy} onClick={() => void run(() => deleteVacation(supabase, v.id))}>삭제</button>}
+              <li key={v.id} className={`${v.type === '일정' ? 'event' : ''}${editing === v.id ? ' editing' : ''}`}>
+                {canEdit
+                  ? <button className="vac-text" onClick={() => startEdit(v)} aria-label={`${v.name} 고치기`}>{v.type === '일정' ? <><b>{v.time ?? '종일'}</b> {v.name}</> : <>{v.name} · {v.type}</>} <span className="vac-pen" aria-hidden>✎</span></button>
+                  : <span>{v.type === '일정' ? <><b>{v.time ?? '종일'}</b> {v.name}</> : <>{v.name} · {v.type}</>}</span>}
+                {canEdit && <button className="btn danger" disabled={busy} onClick={() => { if (editing === v.id) reset(); void run(() => deleteVacation(supabase, v.id)) }}>삭제</button>}
               </li>
             ))}
           </ul>
@@ -76,7 +89,7 @@ export function VacationSheet({ date, items, canEdit, names, onClose, onChanged 
         {canEdit && (
           <>
             <div className="filters vac-mode" role="group" aria-label="추가할 종류">
-              {(['휴가', '일정'] as const).map((m) => <button key={m} aria-pressed={mode === m} onClick={() => { setMode(m); setName('') }}>{m}</button>)}
+              {(['휴가', '일정'] as const).map((m) => <button key={m} aria-pressed={mode === m} onClick={() => { setMode(m); reset() }}>{m}</button>)}
             </div>
             <div className="vac-add">
               {mode === '휴가' ? (
@@ -92,7 +105,8 @@ export function VacationSheet({ date, items, canEdit, names, onClose, onChanged 
                   <input aria-label="시간(선택)" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
                 </>
               )}
-              <button className="btn primary" disabled={busy || !normalizeName(name, mode === '일정' ? 30 : 20)} onClick={() => void add()}>추가</button>
+              <button className="btn primary" disabled={busy || !normalizeName(name, mode === '일정' ? 30 : 20)} onClick={() => void save()}>{editing === null ? '추가' : '수정'}</button>
+              {editing !== null && <button className="btn" disabled={busy} onClick={reset}>취소</button>}
             </div>
           </>
         )}

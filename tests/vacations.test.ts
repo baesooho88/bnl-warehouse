@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { expect, test } from 'vitest'
-import { addVacation, recentNames } from '../src/vacation/vacations'
+import { addVacation, recentNames, updateVacation } from '../src/vacation/vacations'
 
 // insert/select 결과만 정해 두는 최소 가짜 client
 function fakeClient(result: { error?: { code: string; message: string } | null; data?: unknown[] }) {
@@ -9,6 +9,7 @@ function fakeClient(result: { error?: { code: string; message: string } | null; 
   const client = {
     from: () => ({
       insert: async (row: unknown) => { inserted.push(row); return { error: result.error ?? null } },
+      update: (row: unknown) => ({ eq: async (_c: string, id: number) => { inserted.push({ update: row, id }); return { error: result.error ?? null } } }),
       select: () => chain,
     }),
   } as unknown as SupabaseClient
@@ -43,4 +44,16 @@ test('일정: 시간과 30자 내용을 그대로 보낸다', async () => {
 test('recentNames: 일정 내용은 이름 추천에서 뺀다', async () => {
   const { client } = fakeClient({ data: [{ name: '테스트A', type: '연차' }, { name: '방문 일정', type: '일정' }] })
   expect(await recentNames(client)).toEqual(['테스트A'])
+})
+
+test('수정: 같은 규칙(이름 정리·중복)으로 그 줄만 바꾼다', async () => {
+  const ok = fakeClient({})
+  expect(await updateVacation(ok.client, 7, { date: '2099-01-01', name: ' 테스트B ', type: '오후반차' })).toBe('ok')
+  expect(await updateVacation(ok.client, 8, { date: '2099-01-01', name: '방문', type: '일정', time: '' })).toBe('ok')
+  expect(ok.inserted).toEqual([
+    { update: { name: '테스트B', type: '오후반차', time: null }, id: 7 },
+    { update: { name: '방문', type: '일정', time: null }, id: 8 },
+  ])
+  const dup = fakeClient({ error: { code: '23505', message: 'dup' } })
+  expect(await updateVacation(dup.client, 7, { date: '2099-01-01', name: '테스트A', type: '연차' })).toBe('duplicate')
 })
