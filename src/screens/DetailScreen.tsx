@@ -1,4 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { CONTAINER_STATUSES, setStatus, statusKey, type ContainerStatus } from '../inbound/containerStatus'
+import { useContainerStatuses } from '../inbound/useContainerStatuses'
+import { supabase } from '../storage/cloud/supabase'
 import { num } from '../components/format'
 import type { Inbound, Outbound } from '../domain/types'
 import { formatMD } from '../lib/dates'
@@ -31,7 +34,7 @@ function Fields({ rows }: { rows: [string, React.ReactNode][] }) {
 
 const d = (iso: string | null) => (iso ? `${iso} (${formatMD(iso)})` : '-')
 
-export function DetailScreen({ detail, onBack }: { detail: Detail; onBack: () => void }) {
+export function DetailScreen({ detail, onBack, canEdit = false }: { detail: Detail; onBack: () => void; canEdit?: boolean }) {
   // 휴대폰 뒤로가기 버튼으로도 닫히게 한다
   useEffect(() => {
     // StrictMode(개발 모드)에서 effect가 두 번 돌아도 기록은 한 번만 쌓는다
@@ -57,7 +60,7 @@ export function DetailScreen({ detail, onBack }: { detail: Detail; onBack: () =>
         <strong>{detail.kind === 'in' ? `입고·${detail.item.port}` : '출고'}</strong>
       </header>
       <div className="body">
-        {detail.kind === 'in' ? <InboundBody x={detail.item} /> : <OutboundBody x={detail.item} />}
+        {detail.kind === 'in' ? <InboundBody x={detail.item} canEdit={canEdit} /> : <OutboundBody x={detail.item} />}
         {Object.keys(raw).length > 0 && (
           <>
             <h2>원문 (변환하지 못한 값)</h2>
@@ -69,7 +72,7 @@ export function DetailScreen({ detail, onBack }: { detail: Detail; onBack: () =>
   )
 }
 
-function InboundBody({ x }: { x: Inbound }) {
+function InboundBody({ x, canEdit }: { x: Inbound; canEdit: boolean }) {
   return (
     <>
       <h2>{x.item ?? '(품명 없음)'}</h2>
@@ -80,12 +83,7 @@ function InboundBody({ x }: { x: Inbound }) {
       ]} />
       <h2>컨테이너 {x.containers.length}대</h2>
       {x.containers.length > 0 && (
-        <table className="containers">
-          <thead><tr><th>#</th><th>번호</th><th>구분</th></tr></thead>
-          <tbody>
-            {x.containers.map((c, i) => <tr key={i}><td>{i + 1}</td><td>{c.no}</td><td>{c.type ?? '-'}</td></tr>)}
-          </tbody>
-        </table>
+        <ContainerTable x={x} canEdit={canEdit} />
       )}
     </>
   )
@@ -101,6 +99,46 @@ function OutboundBody({ x }: { x: Outbound }) {
         ['요청수량', x.qtyText], ['중량(kg)', num(x.weightKg)], ['용적(CBM)', num(x.cbm)], ['BOX NO', x.boxNo],
         ['MEMO', <WithPhones text={x.memo} />], ['입고 검수 일자', needsInspection(x) ? <span className="badge inspect">검사필요</span> : d(x.inspectedDate)], ['신청자', x.requester], ['Location', x.location],
       ]} />
+    </>
+  )
+}
+
+/** 컨테이너별 상태. 관리자는 바꿀 수 있고, 반입됨으로 바꾸면 직원들에게 알림을 보낸다. */
+function ContainerTable({ x, canEdit }: { x: Inbound; canEdit: boolean }) {
+  const { statuses, reload } = useContainerStatuses([x.bl])
+  const [message, setMessage] = useState('')
+  async function change(no: string, status: ContainerStatus) {
+    setMessage('')
+    try {
+      await setStatus(supabase, x.bl, no, status)
+      reload()
+      if (status === '반입됨') {
+        const { error } = await supabase.functions.invoke('notify', { body: { kind: 'container', date: x.baseDate, containers: [no] } })
+        if (error) setMessage('상태는 바꿨지만 알림을 보내지 못했어요')
+      }
+    } catch {
+      setMessage('저장하지 못했어요. 인터넷을 확인해 주세요')
+    }
+  }
+  return (
+    <>
+      <table className="containers">
+        <thead><tr><th>#</th><th>번호</th><th>구분</th><th>상태</th></tr></thead>
+        <tbody>
+          {x.containers.map((c, i) => {
+            const st = statuses.get(statusKey(x.bl, c.no)) ?? '입고예정'
+            return (
+              <tr key={i}>
+                <td>{i + 1}</td><td>{c.no}</td><td>{c.type ?? '-'}</td>
+                <td>{canEdit
+                  ? <select aria-label={`${c.no} 상태`} value={st} onChange={(e) => void change(c.no, e.target.value as ContainerStatus)}>{CONTAINER_STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
+                  : st}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      {message && <p className="sheet-msg" role="alert">{message}</p>}
     </>
   )
 }

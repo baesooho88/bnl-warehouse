@@ -174,7 +174,7 @@ export default function App() {
       {current === '달력' && <CalendarScreen canEdit={role === 'admin'} />}
       {current === '올리기' && role === 'admin' && <UploadScreen onDataChanged={dataChanged} dataVersion={dataVersion} />}
       </div>
-      {detail && <DetailScreen detail={detail} onBack={closeDetail} />}
+      {detail && <DetailScreen detail={detail} onBack={closeDetail} canEdit={role === 'admin'} />}
       <TabBar tabs={tabs} tab={current} onChange={goTab} />
     </div>
   )

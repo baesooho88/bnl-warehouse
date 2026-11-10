@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { DateNav } from '../components/DateNav'
 import { tons } from '../components/format'
 import { InboundCard } from '../components/InboundCard'
+import { useContainerStatuses } from '../inbound/useContainerStatuses'
 import { OutboundGroups } from '../components/OutboundGroups'
 import type { Inbound, Outbound } from '../domain/types'
 import { repo } from '../repo'
@@ -29,6 +30,7 @@ export function ListScreen(props: {
   }, [date, dataVersion])
 
   const inbound = data?.inbound ?? []
+  const { statuses } = useContainerStatuses(inbound.map((x) => x.bl))
   const outbound = data?.outbound ?? []
   const empty = data !== null && !inbound.length && !outbound.length
 
@@ -58,7 +60,7 @@ export function ListScreen(props: {
               <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>{f}</button>
             ))}
           </div>
-          {filter !== '출고' && inbound.map((x) => <InboundCard key={x.id} item={x} onOpen={props.onOpenIn} />)}
+          {filter !== '출고' && inbound.map((x) => <InboundCard key={x.id} item={x} onOpen={props.onOpenIn} statuses={statuses} />)}
           {filter !== '입고' && <OutboundGroups key={props.date} items={outbound} onOpen={props.onOpenOut} />}
         </>
       )}

@@ -23,7 +23,7 @@ const callFn = (name, body, token) =>
 
 // 1. 비로그인
 const anon = client()
-for (const t of ['inbound', 'outbound', 'upload_log', 'vacations']) {
+for (const t of ['inbound', 'outbound', 'upload_log', 'vacations', 'container_status']) {
   const { data, error } = await anon.from(t).select('*').limit(1)
   check(!!error || data.length === 0, `비로그인 ${t} 읽기 차단`)
 }
@@ -85,6 +85,12 @@ try {
   await staff.from('vacations').delete().eq('date', TEST_DATE)
   check((await countVac()) === 1, '직원 휴가 삭제 무효')
 
+  // 컨테이너 상태: 관리자만 바꿈(테스트 B/L은 실제와 겹치지 않는 값)
+  const cs = { bl: 'VERIFY-BL-2099', container_no: 'VERIFY0000001', status: '반입됨' }
+  check(!(await admin.from('container_status').upsert(cs, { onConflict: 'bl,container_no' })).error, '관리자 컨테이너 상태 변경')
+  check(!!(await staff.from('container_status').upsert({ ...cs, status: '입고예정' }, { onConflict: 'bl,container_no' })).error, '직원 컨테이너 상태 변경 거부')
+  check((await staff.from('container_status').select('status').eq('bl', cs.bl)).data?.[0]?.status === '반입됨', '직원은 상태를 읽을 수 있음(바뀌지 않음)')
+
   // 7. 직원 세션으로 공용 계정 비밀번호를 바꿔도 PIN 로그인이 살아남는다(서버가 되돌림)
   const sabotage = await staff.auth.updateUser({ password: crypto.randomUUID() })
   check((await callFn('staff-login', { pin: STAFF_PIN })).status === 200, `직원이 계정 비밀번호를 바꿔도(${sabotage.error ? '변경 거부됨' : '변경됨'}) PIN 로그인 유지`)
@@ -93,6 +99,7 @@ try {
   check(!clean.error && (await countTest(admin)) === 0, `테스트 날짜(${TEST_DATE}) 정리`)
   await admin.from('vacations').delete().eq('date', TEST_DATE)
   check((await countVac()) === 0, `테스트 휴가(${TEST_DATE}) 정리`)
+  await admin.from('container_status').delete().eq('bl', 'VERIFY-BL-2099')
   await staff.removeChannel(channel)
   await staff.removeChannel(vChannel)
   await staff.auth.signOut({ scope: 'local' })

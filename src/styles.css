@@ -314,3 +314,11 @@ body:has(.detail) { overflow: hidden; }
 .cntr small { color: var(--muted); font-family: inherit; }
 button.og-section { width: 100%; border: 0; background: none; padding: 6px 0; text-align: left; cursor: pointer; }
 .og-section-sum { margin-left: auto; font-weight: 600; }
+
+/* 컨테이너 상태: 입고예정 회색 · 입고됨 파랑 · 반입됨 초록 */
+.cntr em { font-style: normal; font-size: 11px; font-weight: 700; margin-left: 4px; font-family: system-ui, sans-serif; }
+.cntr.s-plan em { color: var(--muted); }
+.cntr.s-in { border-color: var(--in); } .cntr.s-in em { color: var(--in); }
+.cntr.s-done { border-color: #1b8a3a; background: #e3f5e8; } .cntr.s-done em { color: #1b6b35; }
+@media (prefers-color-scheme: dark) { .cntr.s-done { background: #173322; } .cntr.s-done em { color: #7fd99a; } }
+.containers select { min-height: 36px; font-size: 14px; }
