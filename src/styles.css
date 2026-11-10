@@ -301,3 +301,8 @@ body:has(.detail) { overflow: hidden; }
 .hbar-track { height: 8px; background: var(--line); border-radius: 4px; margin-top: 4px; overflow: hidden; }
 .hbar { height: 100%; border-radius: 4px; }
 .hbar.muted { background: var(--muted); }
+
+/* 입고 비고(중요한 내용이 자주 있음)와 긴급건 */
+.note-box { margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: var(--in-soft); color: var(--text); font-size: 14px; word-break: break-word; }
+.note-box b { color: var(--in); margin-right: 4px; }
+.card.in.urgent { border-left-color: var(--urgent); background: var(--urgent-soft); }
