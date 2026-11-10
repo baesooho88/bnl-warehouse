@@ -19,6 +19,12 @@ describe('mapper', () => {
     for (const x of outbound) expect(fromOutboundRow(toOutboundRow(x))).toEqual(x)
   })
 
+  test('출고: 배차 정보도 왕복', () => {
+    const x = { ...outbound[0], dispatch: { line: 2, arrive: '2026-11-11', vehicles: '11T×1', note: '09시', invar: true } }
+    expect(toOutboundRow(x).dispatch).toEqual(x.dispatch)
+    expect(fromOutboundRow(toOutboundRow(x))).toEqual(x)
+  })
+
   test('DB 행은 snake_case 열 이름만 쓴다', () => {
     const row = toInboundRow(inbound[0]) as unknown as Record<string, unknown>
     expect(Object.keys(row)).toEqual(expect.arrayContaining(['base_date', 'weight_kg', 'arrival_date', 'containers', 'raw']))

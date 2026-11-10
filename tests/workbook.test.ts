@@ -79,3 +79,24 @@ describe('새 양식(2026-11~)', () => {
     expect(new Set(r.outbound.map((o) => o.id)).size).toBe(3)
   })
 })
+
+describe('배차 시트', () => {
+  const book = (dispatchLines: string[]) => {
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, newFormatSheet([[1, '품목A', '가', '09시', '2026-11-11']]), '11.9')
+    XLSX.utils.book_append_sheet(wb, newFormatSheet([[1, '품목A', '가', '09시', '2026-11-11'], [2, '품목B', '가', '10시', '2026-11-11'], [3, '품목C', '나', '11시', '2026-11-10']]), '11.10')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dispatchLines.map((l) => [l])), '배차')
+    return parseWorkbook(toBytes(wb), 'x.xlsx', now)
+  }
+  test('가장 최근 날짜 출고에만 붙이고, 배차에 없는 건은 당착·차량 없음', () => {
+    const r = book(['11월 11일 도착', '1, 2 : 11TX1 (09시)'])
+    const d10 = r.outbound.filter((o) => o.baseDate === '2026-11-10')
+    expect(d10.map((o) => [o.seq, o.dispatch?.vehicles, o.dispatch?.arrive])).toEqual([[1, '11T×1', '2026-11-11'], [2, '11T×1', '2026-11-11'], [3, '', null]])
+    expect(r.outbound.filter((o) => o.baseDate === '2026-11-09').every((o) => o.dispatch === undefined)).toBe(true)
+    expect(r.sheets.at(-1)).toMatchObject({ sheetName: '배차', kind: null, status: 'ok', baseDate: '2026-11-10', count: 2 })
+  })
+  test('출고에 없는 순번·읽지 못한 줄은 메시지로', () => {
+    const r = book(['당착', '1 : 1TX1', '9 : 5TX1', '???'])
+    expect(r.sheets.at(-1)?.message).toBe('읽지 못한 줄: ???, 순번 9 출고에 없음')
+  })
+})

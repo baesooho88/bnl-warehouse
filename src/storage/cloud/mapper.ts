@@ -1,4 +1,4 @@
-import type { Container, Inbound, Outbound, Port } from '../../domain/types'
+import type { Container, Dispatch, Inbound, Outbound, Port } from '../../domain/types'
 
 /** 클라우드 inbound 표의 한 행 (스펙 v2 3.1 열 이름 그대로) */
 export interface InboundRow {
@@ -46,6 +46,7 @@ export interface OutboundRow {
   arrive_date: string | null
   location: string | null
   same_day: boolean
+  dispatch: Dispatch | null
   raw: Record<string, string>
 }
 
@@ -66,7 +67,7 @@ export const toOutboundRow = (x: Outbound): OutboundRow => ({
   po: x.po, item: x.item, qty_text: x.qtyText, qty_requested: x.qtyRequested, qty_total: x.qtyTotal,
   weight_kg: x.weightKg, cbm: x.cbm, box_no: x.boxNo, destination: x.destination, gate_time: x.gateTime,
   memo: x.memo, inspected_date: x.inspectedDate, requester: x.requester, arrive_date: x.arriveDate,
-  location: x.location, same_day: x.sameDay, raw: x.raw,
+  location: x.location, same_day: x.sameDay, dispatch: x.dispatch ?? null, raw: x.raw,
 })
 
 export const fromOutboundRow = (r: OutboundRow): Outbound => ({
@@ -74,5 +75,5 @@ export const fromOutboundRow = (r: OutboundRow): Outbound => ({
   po: r.po, item: r.item, qtyText: r.qty_text, qtyRequested: r.qty_requested, qtyTotal: r.qty_total,
   weightKg: r.weight_kg, cbm: r.cbm, boxNo: r.box_no, destination: r.destination, gateTime: r.gate_time,
   memo: r.memo, inspectedDate: r.inspected_date, requester: r.requester, arriveDate: r.arrive_date,
-  location: r.location, sameDay: r.same_day, raw: r.raw ?? {},
+  location: r.location, sameDay: r.same_day, dispatch: r.dispatch ?? undefined, raw: r.raw ?? {},
 })

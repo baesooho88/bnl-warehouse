@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import type { ParseResult, Port } from '../domain/types'
+import { parseDispatch } from './dispatch'
 import { detectKind, findHeaderRow, sheetBaseDate, sheetToGrid } from './grid'
 import { parseInboundSheet } from './inbound'
 import { parseOutboundSheet } from './outbound'
@@ -8,6 +9,7 @@ import { parseOutboundSheet } from './outbound'
 export function parseWorkbook(data: ArrayBuffer | Uint8Array, fileName: string, now: Date): ParseResult {
   const wb = XLSX.read(data) // cellDates 미사용: 날짜를 시간대와 무관한 시리얼로 받는다
   const result: ParseResult = { fileName, inbound: [], outbound: [], sheets: [] }
+  let dispatch: { sheetName: string; lines: string[] } | null = null
 
   for (const sheetName of wb.SheetNames) {
     const grid = sheetToGrid(wb.Sheets[sheetName])
@@ -15,6 +17,10 @@ export function parseWorkbook(data: ArrayBuffer | Uint8Array, fileName: string, 
     const baseDate = sheetBaseDate(sheetName, now)
     const skip = (message: string) => result.sheets.push({ kind, sheetName, baseDate, status: 'skipped', count: 0, message })
 
+    if (!kind && sheetName.includes('배차')) {
+      dispatch = { sheetName, lines: grid.map((row) => row.filter((v) => v !== null).join(' ')) }
+      continue
+    }
     if (!kind) { skip('알 수 없는 양식'); continue }
     if (!baseDate) { skip('시트 이름에서 날짜를 읽지 못함'); continue }
     if (findHeaderRow(grid) < 0) { skip('열 이름 줄을 못 찾음'); continue }
@@ -31,5 +37,19 @@ export function parseWorkbook(data: ArrayBuffer | Uint8Array, fileName: string, 
       result.sheets.push({ kind, sheetName, baseDate, status: 'ok', count: list.length })
     }
   }
+  if (dispatch) attachDispatch(result, dispatch.sheetName, dispatch.lines)
   return result
+}
+
+/** 배차 시트에는 날짜가 없다: 파일의 가장 최근 출고 날짜 것으로 본다. 배차에 없는 건은 이미 나간 당착(차량 없음). */
+function attachDispatch(result: ParseResult, sheetName: string, lines: string[]) {
+  const baseDate = result.outbound.map((o) => o.baseDate).sort().at(-1)
+  if (!baseDate) return
+  const day = result.outbound.filter((o) => o.baseDate === baseDate)
+  const { bySeq, problems } = parseDispatch(lines, baseDate)
+  for (const o of day) o.dispatch = (o.seq !== null && bySeq.get(o.seq)) || { line: 0, arrive: null, vehicles: '', note: null, invar: false }
+  const seqs = new Set(day.map((o) => o.seq))
+  for (const s of bySeq.keys()) if (!seqs.has(s)) problems.push(`순번 ${s} 출고에 없음`)
+  const count = day.filter((o) => o.dispatch!.vehicles).length
+  result.sheets.push({ kind: null, sheetName, baseDate, status: 'ok', count, message: problems.join(', ') || undefined })
 }

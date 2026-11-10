@@ -59,3 +59,20 @@ describe('importFiles', () => {
     ])
   })
 })
+
+test('배차 시트 → 연결 건수 한 줄, 문제는 경고 한 줄, 저장된 출고에 차량 정보', async () => {
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['일일출하요청서'], [null, '11/10'],
+    [null, '센터', '입하', 'BL No', '호선', 'PO', '품명', '수량', '중량', '용적', 'BOX NO', '도착지', '입문', 'MEMO', '검수', '신청자명', '도착', 'Location'],
+    [1, 'BNL', '', 'BL1', '', '', '품목A', '1/1', '100', '', '', '가', '09시', '', '', '', '2026-11-11', ''],
+  ]), '11.10')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['11월 11일 도착'], ['1 : 5TX1'], ['7 : 1TX1']]), '배차')
+  const repo = freshRepo()
+  const lines = await importFiles([file('11.10 출하요청서.xlsx', new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' })))], repo, now)
+  expect(lines.slice(1)).toEqual([
+    { level: 'ok', text: '✅ 11.10 출하요청서: 배차 11.10 차량 1건 연결' },
+    { level: 'warn', text: '⚠️ 11.10 출하요청서 배차 시트: 순번 7 출고에 없음' },
+  ])
+  expect((await repo.getRange('2026-11-10', '2026-11-10')).outbound[0].dispatch?.vehicles).toBe('5T×1')
+})

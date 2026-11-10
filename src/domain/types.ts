@@ -54,7 +54,17 @@ export interface Outbound {
   arriveDate: string | null // 도착 요청일자
   location: string | null
   sameDay: boolean // 당일착
+  dispatch?: Dispatch | null // 배차 시트에서 붙인 차량 정보(그 날짜에 배차 시트가 없으면 없음)
   raw: Record<string, string>
+}
+
+/** 배차 시트 한 줄(차 한 대분 묶음). 같은 줄의 출고 건들은 같은 값을 가진다. */
+export interface Dispatch {
+  line: number // 배차 시트 안의 줄 번호(묶음 구분용)
+  arrive: string | null // 도착일, null = 당착
+  vehicles: string // '11T×1 · 5T×1', 배차에 없는 건은 ''
+  note: string | null // 지역·업체·시간
+  invar: boolean
 }
 
 export interface SheetResult {

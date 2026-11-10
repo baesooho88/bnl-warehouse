@@ -50,7 +50,8 @@ export async function importFiles(files: { name: string; data: ArrayBuffer }[], 
     lines.push(...okLines)
 
     for (const s of parsed.sheets) {
-      if (s.status === 'skipped' && s.message !== '알 수 없는 양식')
+      if (s.status === 'ok' && s.kind === null) lines.push({ level: 'ok', text: `✅ ${name}: 배차 ${formatMD(s.baseDate!)} 차량 ${s.count}건 연결` })
+      if (s.message && s.message !== '알 수 없는 양식')
         lines.push({ level: 'warn', text: `⚠️ ${name} ${s.sheetName} 시트: ${s.message}` })
     }
   }
