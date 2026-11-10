@@ -239,3 +239,7 @@ body:has(.detail) { overflow: hidden; }
 @keyframes slide-from-right { from { transform: translateX(32px); opacity: .4; } }
 @keyframes slide-from-left { from { transform: translateX(-32px); opacity: .4; } }
 @media (prefers-reduced-motion: reduce) { .tab-page.from-right, .tab-page.from-left { animation: none; } }
+.og-section { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); margin: 14px 0 6px; font-weight: 700; }
+.og-note { color: var(--muted); font-weight: 400; font-size: 14px; }
+.og-seq { min-width: 22px; text-align: center; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; flex-shrink: 0; }
+.badge.invar { background: #6f42c1; color: #fff; }
