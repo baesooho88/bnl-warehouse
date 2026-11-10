@@ -42,7 +42,7 @@ export function dayEntries<T extends { type: string; time: string | null }>(list
   return [...ev, ...list.filter((x) => x.type !== '일정')]
 }
 
-export function cellSummary<T>(names: T[], max = 4): { shown: T[]; more: number } {
+export function cellSummary<T>(names: T[], max = 5): { shown: T[]; more: number } {
   return { shown: names.slice(0, max), more: Math.max(0, names.length - max) }
 }
 
