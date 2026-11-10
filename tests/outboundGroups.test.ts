@@ -48,3 +48,19 @@ test('당일착 도착지끼리는 그룹 전체에서 가장 이른 게이트 �
   ])
   expect(g.map((x) => x.destination)).toEqual(['X', 'Y'])
 })
+
+import { groupByDispatch } from '../src/lib/outboundGroups'
+const dp = (line: number, arrive: string | null, vehicles: string, invar = false, note: string | null = null) => ({ line, arrive, vehicles, note, invar })
+
+test('배차 묶음: 도착일 구역(당착 먼저, INVAR는 같은 날 뒤) 안에 차량 줄 순서대로', () => {
+  const s = groupByDispatch([
+    o({ seq: 21, weightKg: 100, dispatch: dp(5, '2026-11-11', '11T×2', true) }),
+    o({ seq: 4, weightKg: 300, dispatch: dp(3, '2026-11-11', '1T×1', false, '광양 - 테스트') }),
+    o({ seq: 9, dispatch: dp(0, null, '') }),
+    o({ seq: 2, weightKg: 200, dispatch: dp(2, null, '5T×1') }),
+    o({ seq: 3, weightKg: 50, dispatch: dp(2, null, '5T×1') }),
+  ])
+  expect(s.map((x) => [x.arrive, x.invar])).toEqual([[null, false], ['2026-11-11', false], ['2026-11-11', true]])
+  expect(s[0].groups.map((g) => [g.vehicles, g.items.map((i) => i.seq), g.weightKg])).toEqual([['5T×1', [2, 3], 250], ['', [9], 0]])
+  expect(s[1].groups[0]).toMatchObject({ vehicles: '1T×1', note: '광양 - 테스트' })
+})
