@@ -16,5 +16,5 @@ export function buildMessage(s: UploadSummary): { title: string; body: string; t
   const md = `${+s.date.slice(5, 7)}.${+s.date.slice(8, 10)}`
   const same = count(s.sameDay)
   const body = `${md} 입출고가 올라왔어요 — 입고 ${count(s.inbound)} · 출고 ${count(s.outbound)}${same ? ` (당일착 ${same})` : ''}`
-  return { title: 'BNL 입출고', body, tag: 'bnl-upload', url: `?date=${s.date}` }
+  return { title: '(주)부산신항로지텍', body, tag: 'bnl-upload', url: `?date=${s.date}` }
 }

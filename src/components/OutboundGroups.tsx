@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Outbound } from '../domain/types'
 import { formatDay } from '../lib/dates'
-import { groupByDispatch, groupOutbound, seqLabel } from '../lib/outboundGroups'
+import { groupByDispatch, groupOutbound, seqLabel, vehicleChips } from '../lib/outboundGroups'
 import { kg, tons } from './format'
 
 /**
@@ -50,7 +50,9 @@ export function OutboundGroups({ items, onOpen }: { items: Outbound[]; onOpen: (
               <span className="og-disp">
                 <span className="og-disp1">
                   <b className="og-seqs">{seqLabel(g.items.flatMap((x) => (x.seq === null ? [] : [x.seq])))}</b>
-                  <span className="og-veh">{g.vehicles ? `🚚 ${g.vehicles}` : '배차 전 출발'}</span>
+                  {g.vehicles
+                    ? vehicleChips(g.vehicles).map((c, i) => <span key={i} className={`og-veh ${c.tone}`}>{c.icon} {c.label}</span>)
+                    : <span className="og-veh none">배차 전 출발</span>}
                   {g.note && <span className="og-note">{g.note}</span>}
                 </span>
                 <span className="og-disp2">

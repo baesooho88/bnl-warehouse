@@ -16,7 +16,7 @@ type Message = { title: string; body: string; tag: string; url: string }
 self.addEventListener('push', (event) => {
   const m = (event.data?.json() ?? {}) as Partial<Message>
   event.waitUntil(
-    self.registration.showNotification(m.title ?? 'BNL 입출고', {
+    self.registration.showNotification(m.title ?? '(주)부산신항로지텍', {
       body: m.body ?? '새 입출고가 올라왔어요',
       tag: m.tag ?? 'bnl-upload',
       icon: 'pwa-192x192.png',

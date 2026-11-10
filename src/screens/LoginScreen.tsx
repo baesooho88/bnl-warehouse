@@ -33,7 +33,7 @@ export function LoginScreen() {
   return (
     <main className="login">
       <img className="login-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt="BNL" width={220} height={82} />
-      <h1>BNL 입출고</h1>
+      <h1>(주)부산신항로지텍</h1>
       <form onSubmit={submit}>
         {mode === 'staff' ? (
           <label>

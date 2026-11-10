@@ -3,7 +3,7 @@ import { buildMessage } from '../supabase/functions/_shared/notifyText'
 
 test('업로드 알림 문구', () => {
   expect(buildMessage({ date: '2026-11-06', inbound: 3, outbound: 28, sameDay: 2 })).toEqual({
-    title: 'BNL 입출고',
+    title: '(주)부산신항로지텍',
     body: '11.6 입출고가 올라왔어요 — 입고 3 · 출고 28 (당일착 2)',
     tag: 'bnl-upload',
     url: '?date=2026-11-06',

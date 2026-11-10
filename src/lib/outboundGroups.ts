@@ -70,3 +70,17 @@ export function seqLabel(seqs: number[]): string {
   }
   return out.join(', ')
 }
+
+/**
+ * '8T×1 · 5T×1' → 차량마다 모양과 색. 모양: 1T 이하 🛻 픽업, 8T까지 🚚 화물차, 그 이상·트레일러 🚛 대형.
+ * 색(tone): t1 회색 · t5(2.5~5T) 파랑 · t8 초록 · t11 주황 · t25(15T 이상) 빨강 · ttr(트레일러 등) 보라
+ */
+export function vehicleChips(vehicles: string): { label: string; icon: string; tone: string }[] {
+  return vehicles.split(' · ').filter(Boolean).map((label) => {
+    const ton = parseFloat(label)
+    if (Number.isNaN(ton)) return { label, icon: '🚛', tone: 'ttr' }
+    const icon = ton <= 1 ? '🛻' : ton <= 8 ? '🚚' : '🚛'
+    const tone = ton <= 1 ? 't1' : ton <= 5 ? 't5' : ton <= 8 ? 't8' : ton <= 11 ? 't11' : 't25'
+    return { label, icon, tone }
+  })
+}

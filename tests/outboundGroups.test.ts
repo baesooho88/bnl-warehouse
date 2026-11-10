@@ -73,3 +73,12 @@ test('seqLabel: 이어지는 순번은 범위로', () => {
   expect(seqLabel([31, 20, 21])).toBe('20, 21, 31')
   expect(seqLabel([])).toBe('')
 })
+
+import { vehicleChips } from '../src/lib/outboundGroups'
+test('vehicleChips: 톤수별 모양(픽업·화물차·대형)과 색', () => {
+  expect(vehicleChips('8T×1 · 5T×1')).toEqual([{ label: '8T×1', icon: '🚚', tone: 't8' }, { label: '5T×1', icon: '🚚', tone: 't5' }])
+  expect(vehicleChips('1T×1')).toEqual([{ label: '1T×1', icon: '🛻', tone: 't1' }])
+  expect(vehicleChips('11T×2 · 25T×1 · TR×1').map((c) => [c.icon, c.tone])).toEqual([['🚛', 't11'], ['🚛', 't25'], ['🚛', 'ttr']])
+  expect(vehicleChips('3.5T×1')[0]).toEqual({ label: '3.5T×1', icon: '🚚', tone: 't5' })
+  expect(vehicleChips('')).toEqual([])
+})

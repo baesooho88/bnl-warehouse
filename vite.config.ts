@@ -16,8 +16,8 @@ export default defineConfig({
       injectManifest: { globPatterns: ['**/*.{js,css,html,svg,png,ico}'] },
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo.png'],
       manifest: {
-        name: 'BNL 입출고',
-        short_name: 'BNL 입출고',
+        name: '(주)부산신항로지텍',
+        short_name: '(주)부산신항로지텍',
         description: '보세운송 입고·한화오션 출고 내역 조회',
         lang: 'ko',
         display: 'standalone',

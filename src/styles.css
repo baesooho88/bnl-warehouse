@@ -248,7 +248,14 @@ body:has(.detail) { overflow: hidden; }
 .og-disp1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .og-seqs { font-size: 17px; white-space: nowrap; }
 .og-seqs::after { content: '번'; font-size: 13px; font-weight: 600; margin-left: 1px; }
-.og-veh { font-weight: 700; color: var(--out); white-space: nowrap; }
+.og-veh { font-weight: 700; white-space: nowrap; font-size: 14px; padding: 1px 8px; border-radius: 999px; }
+.og-veh.none { color: var(--out); padding: 0; }
+.og-veh.t1 { background: #e9ecef; color: #343a40; }
+.og-veh.t5 { background: #dbe9ff; color: #1a4fa3; }
+.og-veh.t8 { background: #d8f3dc; color: #1b6b35; }
+.og-veh.t11 { background: #ffe8cc; color: #a34a00; }
+.og-veh.t25 { background: #ffe0e0; color: #b42318; }
+.og-veh.ttr { background: #ece0ff; color: #5a2ca0; }
 .og-disp1 .og-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .og-disp2 { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

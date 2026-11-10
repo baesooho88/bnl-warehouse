@@ -28,7 +28,7 @@ const dateParam = () => {
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined) // undefined = 확인 중
   const role: Role = roleOf(session ?? null)
-  const [tab, setTabState] = useState<Tab>('목록')
+  const [tab, setTabState] = useState<Tab>('입출고')
   const [slide, setSlide] = useState<'' | 'from-right' | 'from-left'>('')
   const touch = useRef<{ x: number; y: number } | null>(null)
   const [date, setDate] = useState(() => dateParam() ?? todayIso(new Date()))
@@ -54,7 +54,7 @@ export default function App() {
     await sync.reset() // 진행 중 동기화가 지운 뒤에 옛 위치를 되살리지 않게 (clearAll 바로 앞)
     await local.clearAll()
     setDetail(null)
-    setTabState('목록')
+    setTabState('입출고')
     setDataVersion((v) => v + 1)
   }, [])
 
@@ -104,7 +104,7 @@ export default function App() {
       if (e.data?.type === 'open-date' && /^\d{4}-\d{2}-\d{2}$/.test(e.data.date)) {
         fixedDate.current = true
         setDetail(null)
-        setTabState('목록')
+        setTabState('입출고')
         setDate(e.data.date)
       }
     }
@@ -139,8 +139,8 @@ export default function App() {
   if (session === undefined) return <main className="empty">불러오는 중…</main>
   if (!session || !role) return <LoginScreen />
 
-  const tabs: Tab[] = role === 'admin' ? ['목록', '검색', '통계', '달력', '올리기'] : ['목록', '검색', '통계', '달력']
-  const current = tabs.includes(tab) ? tab : '목록'
+  const tabs: Tab[] = role === 'admin' ? ['입출고', '검색', '통계', '달력', '올리기'] : ['입출고', '검색', '통계', '달력']
+  const current = tabs.includes(tab) ? tab : '입출고'
   const goTab = (t: Tab) => {
     if (t === current) return
     setSlide(tabs.indexOf(t) > tabs.indexOf(current) ? 'from-right' : 'from-left')
@@ -164,10 +164,10 @@ export default function App() {
         onTogglePush={() => void togglePush()} onLogout={() => void logout(supabase, cleanup)}
         roleLabel={role === 'admin' ? '관리자로 로그인됨' : '직원으로 로그인됨'} />
       <div key={current} className={`tab-page ${slide}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      {current === '목록' && permission === 'default' && pushOn === false && VAPID_KEY && <PushCard onEnable={() => void enablePush()} />}
-      {current === '목록' && (
+      {current === '입출고' && permission === 'default' && pushOn === false && VAPID_KEY && <PushCard onEnable={() => void enablePush()} />}
+      {current === '입출고' && (
         <ListScreen date={date} onDateChange={changeDate} onOpenIn={openIn} onOpenOut={openOut}
-          onGoUpload={() => goTab(role === 'admin' ? '올리기' : '목록')} canUpload={role === 'admin'} dataVersion={dataVersion} />
+          onGoUpload={() => goTab(role === 'admin' ? '올리기' : '입출고')} canUpload={role === 'admin'} dataVersion={dataVersion} />
       )}
       {current === '검색' && <SearchScreen onOpenIn={openIn} onOpenOut={openOut} dataVersion={dataVersion} />}
       {current === '통계' && <StatsScreen dataVersion={dataVersion} />}
