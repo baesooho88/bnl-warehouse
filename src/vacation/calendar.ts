@@ -34,6 +34,13 @@ export function normalizeName(raw: string): string | null {
   return n.length >= 1 && n.length <= 20 ? n : null
 }
 
-export function cellSummary<T>(names: T[], max = 3): { shown: T[]; more: number } {
+export function cellSummary<T>(names: T[], max = 4): { shown: T[]; more: number } {
   return { shown: names.slice(0, max), more: Math.max(0, names.length - max) }
+}
+
+/** 이름 자동완성: 친 글자로 시작하는 이름(성으로 찾기), 이미 똑같이 친 이름은 빼고 최대 8개 */
+export function suggestNames(names: string[], typed: string): string[] {
+  const t = typed.trim()
+  if (!t) return []
+  return names.filter((n) => n.startsWith(t) && n !== t).slice(0, 8)
 }

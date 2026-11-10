@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { cellSummary, monthBounds, monthGrid, monthOf, normalizeName, shiftMonth } from '../src/vacation/calendar'
+import { cellSummary, monthBounds, monthGrid, monthOf, normalizeName, shiftMonth, suggestNames } from '../src/vacation/calendar'
 
 test('monthGrid 2026-11: 일요일 시작, 5주, 30일', () => {
   const g = monthGrid('2026-11')
@@ -33,8 +33,15 @@ test('normalizeName: 앞뒤 공백만 제거, 빈 값·21자는 null', () => {
   expect(normalizeName('가'.repeat(20))).toBe('가'.repeat(20))
   expect(normalizeName('가'.repeat(21))).toBeNull()
 })
-test('cellSummary: 3명까지, 나머지는 more', () => {
+test('cellSummary: 4명까지, 나머지는 more', () => {
   expect(cellSummary([])).toEqual({ shown: [], more: 0 })
-  expect(cellSummary(['A', 'B', 'C'])).toEqual({ shown: ['A', 'B', 'C'], more: 0 })
-  expect(cellSummary(['A', 'B', 'C', 'D', 'E'])).toEqual({ shown: ['A', 'B', 'C'], more: 2 })
+  expect(cellSummary(['A', 'B', 'C', 'D'])).toEqual({ shown: ['A', 'B', 'C', 'D'], more: 0 })
+  expect(cellSummary(['A', 'B', 'C', 'D', 'E', 'F'])).toEqual({ shown: ['A', 'B', 'C', 'D'], more: 2 })
+})
+test('suggestNames: 친 글자로 시작하는 이름만(배 → 배씨), 이미 다 친 이름은 빼고 최대 8개', () => {
+  const names = ['배테스트', '김배테', '배가', '이을', '배나']
+  expect(suggestNames(names, '배')).toEqual(['배테스트', '배가', '배나'])
+  expect(suggestNames(names, ' 배가 ')).toEqual([])
+  expect(suggestNames(names, '')).toEqual([])
+  expect(suggestNames(Array.from({ length: 20 }, (_, i) => `배${i}`), '배')).toHaveLength(8)
 })

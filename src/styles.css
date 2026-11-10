@@ -186,7 +186,7 @@ body:has(.detail) { overflow: hidden; }
 .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
 .cal-w { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
 .cal-cell {
-  min-height: 84px; padding: 4px 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+  min-height: 100px; padding: 4px 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
   color: var(--text); display: flex; flex-direction: column; align-items: stretch; gap: 1px; text-align: left; min-width: 0;
 }
 .cal-cell.blank { background: none; border-color: transparent; }
@@ -198,7 +198,8 @@ body:has(.detail) { overflow: hidden; }
 .cal-name { border-radius: 3px; padding: 0 2px; }
 .cal-name.full { background: var(--in-soft); }
 .cal-name.half { background: var(--out-soft); }
-.cal-name.etc { background: var(--line); }
+.cal-name.etc { background: #ffe0ef; color: #9c1c5b; }
+@media (prefers-color-scheme: dark) { .cal-name.etc { background: #4a1f35; color: #ffb3d6; } }
 .cal-legend { display: flex; gap: 6px; justify-content: flex-end; margin: -4px 0 6px; }
 .cal-legend .cal-name { font-size: 11px; padding: 0 6px; }
 .cal-more { color: var(--muted); }
@@ -250,3 +251,6 @@ body:has(.detail) { overflow: hidden; }
 .og-veh { font-weight: 700; color: var(--out); white-space: nowrap; }
 .og-disp1 .og-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .og-disp2 { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.vac-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.vac-suggest button { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--in-soft); color: var(--text); font-size: 15px; }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatDay } from '../lib/dates'
-import { normalizeName, VACATION_TYPES, type VacationType } from '../vacation/calendar'
+import { normalizeName, suggestNames, VACATION_TYPES, type VacationType } from '../vacation/calendar'
 import { addVacation, deleteVacation, type Vacation } from '../vacation/vacations'
 import { supabase } from '../storage/cloud/supabase'
 
@@ -72,12 +72,16 @@ export function VacationSheet({ date, items, canEdit, names, onClose, onChanged 
         )}
         {canEdit && (
           <div className="vac-add">
-            <input aria-label="이름" placeholder="이름" list="vac-names" maxLength={20} value={name} onChange={(e) => setName(e.target.value)} />
-            <datalist id="vac-names">{names.map((n) => <option key={n} value={n} />)}</datalist>
+            <input aria-label="이름" placeholder="이름 (성만 쳐도 찾아요)" autoComplete="off" maxLength={20} value={name} onChange={(e) => setName(e.target.value)} />
             <select aria-label="종류" value={type} onChange={(e) => setType(e.target.value as VacationType)}>
               {VACATION_TYPES.map((t) => <option key={t}>{t}</option>)}
             </select>
             <button className="btn primary" disabled={busy || !normalizeName(name)} onClick={() => void add()}>추가</button>
+          </div>
+        )}
+        {canEdit && suggestNames(names, name).length > 0 && (
+          <div className="vac-suggest" role="listbox" aria-label="이름 추천">
+            {suggestNames(names, name).map((n) => <button key={n} role="option" aria-selected={false} onClick={() => setName(n)}>{n}</button>)}
           </div>
         )}
         {message && <p className="sheet-msg" role="alert">{message}</p>}
