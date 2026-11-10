@@ -56,3 +56,17 @@ export function groupByDispatch(items: Outbound[]): DispatchSection[] {
         .map((g) => ({ ...g, items: g.items.sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0)) })),
     }))
 }
+
+/** [12,13,…,19,30] → '12~19, 30'. 배차표처럼 3개 이상 이어질 때만 범위로 쓴다. */
+export function seqLabel(seqs: number[]): string {
+  const s = [...seqs].sort((a, b) => a - b)
+  const out: string[] = []
+  for (let i = 0; i < s.length; ) {
+    let j = i
+    while (j + 1 < s.length && s[j + 1] === s[j] + 1) j++
+    if (j - i >= 2) out.push(`${s[i]}~${s[j]}`)
+    else for (let k = i; k <= j; k++) out.push(String(s[k]))
+    i = j + 1
+  }
+  return out.join(', ')
+}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Outbound } from '../domain/types'
 import { formatDay } from '../lib/dates'
-import { groupByDispatch, groupOutbound } from '../lib/outboundGroups'
+import { groupByDispatch, groupOutbound, seqLabel } from '../lib/outboundGroups'
 import { kg, tons } from './format'
 
 /**
@@ -46,11 +46,18 @@ export function OutboundGroups({ items, onOpen }: { items: Outbound[]; onOpen: (
               {s.invar && <span className="badge invar">INVAR</span>}
             </h3>
             {s.groups.map((g) => group(`d|${s.arrive}|${s.invar}|${g.key}`, (
-              <>
-                <span className="og-dest">{g.vehicles ? `🚚 ${g.vehicles}` : '당일착 · 배차 전 출발'}{g.note && <span className="og-note"> {g.note}</span>}</span>
-                <span className="og-sum">{g.items.length}건 · {tons(g.weightKg)}</span>
-              </>
-            ), g.items, true))}
+              // 출고 담당자는 '몇 번에 무슨 차'를 본다: 순번 먼저, 그 옆에 차량, 아래에 도착지
+              <span className="og-disp">
+                <span className="og-disp1">
+                  <b className="og-seqs">{seqLabel(g.items.flatMap((x) => (x.seq === null ? [] : [x.seq])))}</b>
+                  <span className="og-veh">{g.vehicles ? `🚚 ${g.vehicles}` : '배차 전 출발'}</span>
+                  {g.note && <span className="og-note">{g.note}</span>}
+                </span>
+                <span className="og-disp2">
+                  {[...new Set(g.items.map((x) => x.destination ?? '도착지 없음'))].join(' · ')} · {g.items.length}건 · {tons(g.weightKg)}
+                </span>
+              </span>
+            ), g.items))}
           </div>
         ))}
       </div>

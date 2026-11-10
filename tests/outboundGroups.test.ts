@@ -64,3 +64,12 @@ test('배차 묶음: 도착일 구역(당착 먼저, INVAR는 같은 날 뒤) �
   expect(s[0].groups.map((g) => [g.vehicles, g.items.map((i) => i.seq), g.weightKg])).toEqual([['5T×1', [2, 3], 250], ['', [9], 0]])
   expect(s[1].groups[0]).toMatchObject({ vehicles: '1T×1', note: '광양 - 테스트' })
 })
+
+import { seqLabel } from '../src/lib/outboundGroups'
+test('seqLabel: 이어지는 순번은 범위로', () => {
+  expect(seqLabel([1])).toBe('1')
+  expect(seqLabel([2, 3])).toBe('2, 3')
+  expect(seqLabel([12, 13, 14, 15, 16, 17, 18, 19, 30])).toBe('12~19, 30')
+  expect(seqLabel([31, 20, 21])).toBe('20, 21, 31')
+  expect(seqLabel([])).toBe('')
+})

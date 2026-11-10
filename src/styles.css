@@ -243,3 +243,10 @@ body:has(.detail) { overflow: hidden; }
 .og-note { color: var(--muted); font-weight: 400; font-size: 14px; }
 .og-seq { min-width: 22px; text-align: center; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; flex-shrink: 0; }
 .badge.invar { background: #6f42c1; color: #fff; }
+.og-disp { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.og-disp1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.og-seqs { font-size: 17px; white-space: nowrap; }
+.og-seqs::after { content: '번'; font-size: 13px; font-weight: 600; margin-left: 1px; }
+.og-veh { font-weight: 700; color: var(--out); white-space: nowrap; }
+.og-disp1 .og-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.og-disp2 { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
