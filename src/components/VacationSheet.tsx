@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatDay } from '../lib/dates'
-import { normalizeName, suggestNames, VACATION_TYPES, type VacationType } from '../vacation/calendar'
+import { dayEntries, normalizeName, suggestNames, VACATION_TYPES, type VacationType } from '../vacation/calendar'
 import { addVacation, deleteVacation, type Vacation } from '../vacation/vacations'
 import { supabase } from '../storage/cloud/supabase'
 
@@ -15,6 +15,8 @@ export function VacationSheet({ date, items, canEdit, names, onClose, onChanged 
 }) {
   const [name, setName] = useState('')
   const [type, setType] = useState<VacationType>('연차')
+  const [mode, setMode] = useState<'휴가' | '일정'>('휴가')
+  const [time, setTime] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -48,38 +50,53 @@ export function VacationSheet({ date, items, canEdit, names, onClose, onChanged 
   }
 
   async function add() {
-    if ((await run(() => addVacation(supabase, { date, name, type }))) === 'ok') setName('')
+    const v = mode === '일정' ? { date, name, type: '일정' as const, time } : { date, name, type }
+    if ((await run(() => addVacation(supabase, v))) === 'ok') { setName(''); setTime('') }
   }
 
   return (
     <div className="sheet-backdrop" onClick={close}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-label={`${formatDay(date)} 휴가`} onClick={(e) => e.stopPropagation()}>
+      <div className="sheet" role="dialog" aria-modal="true" aria-label={`${formatDay(date)} 일정·휴가`} onClick={(e) => e.stopPropagation()}>
         <header>
-          <strong>{formatDay(date)} 휴가</strong>
+          <strong>{formatDay(date)}</strong>
           <button className="sheet-close" onClick={close} aria-label="닫기">✕</button>
         </header>
         {items.length === 0 ? (
-          <p className="muted">휴가자가 없어요</p>
+          <p className="muted">일정·휴가가 없어요</p>
         ) : (
           <ul className="vac-list">
-            {items.map((v) => (
-              <li key={v.id}>
-                <span>{v.name} · {v.type}</span>
+            {dayEntries(items).map((v) => (
+              <li key={v.id} className={v.type === '일정' ? 'event' : undefined}>
+                <span>{v.type === '일정' ? <><b>{v.time ?? '종일'}</b> {v.name}</> : <>{v.name} · {v.type}</>}</span>
                 {canEdit && <button className="btn danger" disabled={busy} onClick={() => void run(() => deleteVacation(supabase, v.id))}>삭제</button>}
               </li>
             ))}
           </ul>
         )}
         {canEdit && (
-          <div className="vac-add">
-            <input aria-label="이름" placeholder="이름 (성만 쳐도 찾아요)" autoComplete="off" maxLength={20} value={name} onChange={(e) => setName(e.target.value)} />
-            <select aria-label="종류" value={type} onChange={(e) => setType(e.target.value as VacationType)}>
-              {VACATION_TYPES.map((t) => <option key={t}>{t}</option>)}
-            </select>
-            <button className="btn primary" disabled={busy || !normalizeName(name)} onClick={() => void add()}>추가</button>
-          </div>
+          <>
+            <div className="filters vac-mode" role="group" aria-label="추가할 종류">
+              {(['휴가', '일정'] as const).map((m) => <button key={m} aria-pressed={mode === m} onClick={() => { setMode(m); setName('') }}>{m}</button>)}
+            </div>
+            <div className="vac-add">
+              {mode === '휴가' ? (
+                <>
+                  <input aria-label="이름" placeholder="이름 (성만 쳐도 찾아요)" autoComplete="off" maxLength={20} value={name} onChange={(e) => setName(e.target.value)} />
+                  <select aria-label="종류" value={type} onChange={(e) => setType(e.target.value as VacationType)}>
+                    {VACATION_TYPES.map((t) => <option key={t}>{t}</option>)}
+                  </select>
+                </>
+              ) : (
+                <>
+                  <input aria-label="일정 내용" placeholder="예: ○○부장 방문" autoComplete="off" maxLength={30} value={name} onChange={(e) => setName(e.target.value)} />
+                  <input aria-label="시간(선택)" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                </>
+              )}
+              <button className="btn primary" disabled={busy || !normalizeName(name, mode === '일정' ? 30 : 20)} onClick={() => void add()}>추가</button>
+            </div>
+          </>
         )}
-        {canEdit && suggestNames(names, name).length > 0 && (
+        {canEdit && mode === '휴가' && suggestNames(names, name).length > 0 && (
           <div className="vac-suggest" role="listbox" aria-label="이름 추천">
             {suggestNames(names, name).map((n) => <button key={n} role="option" aria-selected={false} onClick={() => setName(n)}>{n}</button>)}
           </div>

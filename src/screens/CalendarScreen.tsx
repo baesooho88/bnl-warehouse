@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { VacationSheet } from '../components/VacationSheet'
 import { todayIso } from '../lib/dates'
 import { supabase } from '../storage/cloud/supabase'
-import { cellSummary, monthGrid, monthOf, shiftMonth } from '../vacation/calendar'
+import { cellSummary, dayEntries, monthGrid, monthOf, shiftMonth } from '../vacation/calendar'
 import { fetchMonth, onVacationChange, recentNames, type Vacation } from '../vacation/vacations'
 
 const WEEK = ['일', '월', '화', '수', '목', '금', '토']
 // 칸이 좁아 이름만 쓰고 종류는 색으로 (연차·반차·기타)
-const typeClass = (t: string) => (t === '연차' ? 'full' : t === '기타' ? 'etc' : 'half')
+// 칸이 좁아 '10:00' → '10시', '09:30' → '9:30'
+const shortTime = (t: string) => (t.endsWith(':00') ? `${+t.slice(0, 2)}시` : `${+t.slice(0, 2)}:${t.slice(3)}`)
+const typeClass = (t: string) => (t === '일정' ? 'event' : t === '연차' ? 'full' : t === '기타' ? 'etc' : 'half')
 
 export function CalendarScreen({ canEdit }: { canEdit: boolean }) {
   const today = todayIso(new Date())
@@ -67,7 +69,7 @@ export function CalendarScreen({ canEdit }: { canEdit: boolean }) {
         <strong>{+ym.slice(0, 4)}년 {+ym.slice(5, 7)}월</strong>
         <button onClick={() => setYm(shiftMonth(ym, 1))} aria-label="다음 달">▶</button>
       </div>
-      <div className="cal-legend"><span className="cal-name full">연차</span><span className="cal-name half">반차</span><span className="cal-name etc">기타</span></div>
+      <div className="cal-legend"><span className="cal-name full">연차</span><span className="cal-name half">반차</span><span className="cal-name etc">기타</span><span className="cal-name event">일정</span></div>
       {state === 'offline' || state === 'error' ? (
         <div className="empty">
           <p>{state === 'offline' ? '인터넷 연결이 필요해요' : '불러오지 못했어요'}</p>
@@ -79,13 +81,13 @@ export function CalendarScreen({ canEdit }: { canEdit: boolean }) {
           {monthGrid(ym).flat().map((d, i) => {
             if (!d) return <div key={`x${i}`} className="cal-cell blank" />
             const list = byDate.get(d) ?? []
-            const { shown, more } = cellSummary(list)
+            const { shown, more } = cellSummary(dayEntries(list))
             const dow = i % 7
             return (
               <button key={d} className={`cal-cell${d === today ? ' today' : ''}`} onClick={() => setOpenDate(d)}>
                 <span className={`cal-d${dow === 0 ? ' sun' : dow === 6 ? ' sat' : ''}`}>{+d.slice(8)}</span>
-                {shown.map((v) => <span key={v.id} className={`cal-name ${typeClass(v.type)}`}>{v.name}</span>)}
-                {more > 0 && <span className="cal-more">+{more}명</span>}
+                {shown.map((v) => <span key={v.id} className={`cal-name ${typeClass(v.type)}`}>{v.type === '일정' && v.time ? `${shortTime(v.time)} ` : ''}{v.name}</span>)}
+                {more > 0 && <span className="cal-more">+{more}</span>}
               </button>
             )
           })}

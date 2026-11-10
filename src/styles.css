@@ -254,3 +254,9 @@ body:has(.detail) { overflow: hidden; }
 
 .vac-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .vac-suggest button { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--in-soft); color: var(--text); font-size: 15px; }
+
+/* 일정: 구글 캘린더처럼 진한 색 막대 */
+.cal-name.event { background: #0b8043; color: #fff; font-weight: 600; }
+.vac-list li.event b { color: #0b8043; margin-right: 4px; }
+.vac-mode { margin: 8px 0; }
+.vac-add input[type=time] { flex: 0 0 auto; }

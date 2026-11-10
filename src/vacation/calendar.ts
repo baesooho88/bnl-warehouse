@@ -1,6 +1,8 @@
 // 휴가 달력 계산. 월은 'YYYY-MM', 날짜는 'YYYY-MM-DD'. UTC로 계산한다(src/lib/dates.ts와 같은 방식).
 export const VACATION_TYPES = ['연차', '오전반차', '오후반차', '기타'] as const
 export type VacationType = (typeof VACATION_TYPES)[number]
+/** 달력 한 줄의 종류: 휴가 4종 + 일정(방문·업무, 하루짜리) */
+export type EntryType = VacationType | '일정'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const parts = (ym: string) => [+ym.slice(0, 4), +ym.slice(5, 7)] as const
@@ -28,10 +30,16 @@ export function monthGrid(ym: string): (string | null)[][] {
   return Array.from({ length: cells.length / 7 }, (_, i) => cells.slice(i * 7, i * 7 + 7))
 }
 
-/** 앞뒤 공백만 제거(중간 공백 유지). 비었거나 20자 넘으면 null. */
-export function normalizeName(raw: string): string | null {
+/** 앞뒤 공백만 제거(중간 공백 유지). 비었거나 max(휴가 이름 20, 일정 내용 30)자 넘으면 null. */
+export function normalizeName(raw: string, max = 20): string | null {
   const n = raw.trim()
-  return n.length >= 1 && n.length <= 20 ? n : null
+  return n.length >= 1 && n.length <= max ? n : null
+}
+
+/** 하루치 줄 순서: 일정 먼저(시간 없는 것 → 시간순), 그다음 휴가(들어온 순서) — 구글 캘린더처럼 */
+export function dayEntries<T extends { type: string; time: string | null }>(list: T[]): T[] {
+  const ev = list.filter((x) => x.type === '일정').sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
+  return [...ev, ...list.filter((x) => x.type !== '일정')]
 }
 
 export function cellSummary<T>(names: T[], max = 4): { shown: T[]; more: number } {

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { cellSummary, monthBounds, monthGrid, monthOf, normalizeName, shiftMonth, suggestNames } from '../src/vacation/calendar'
+import { cellSummary, dayEntries, monthBounds, monthGrid, monthOf, normalizeName, shiftMonth, suggestNames } from '../src/vacation/calendar'
 
 test('monthGrid 2026-11: 일요일 시작, 5주, 30일', () => {
   const g = monthGrid('2026-11')
@@ -44,4 +44,13 @@ test('suggestNames: 친 글자로 시작하는 이름만(배 → 배씨), 이미
   expect(suggestNames(names, ' 배가 ')).toEqual([])
   expect(suggestNames(names, '')).toEqual([])
   expect(suggestNames(Array.from({ length: 20 }, (_, i) => `배${i}`), '배')).toHaveLength(8)
+})
+
+test('일정은 30자까지, 휴가 이름은 20자까지', () => {
+  expect(normalizeName('가'.repeat(30), 30)).toBe('가'.repeat(30))
+  expect(normalizeName('가'.repeat(21))).toBeNull()
+})
+test('dayEntries: 일정 먼저(시간 없는 것 → 시간순), 그다음 휴가는 들어온 순서', () => {
+  const e = (id: number, type: string, time: string | null = null) => ({ id, date: '2026-11-10', name: `n${id}`, type, time })
+  expect(dayEntries([e(1, '연차'), e(2, '일정', '14:00'), e(3, '기타'), e(4, '일정', '09:30'), e(5, '일정')] as never).map((x) => x.id)).toEqual([5, 4, 2, 1, 3])
 })
