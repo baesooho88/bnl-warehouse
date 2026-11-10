@@ -133,7 +133,7 @@ body:has(.detail) { overflow: hidden; }
 .bars { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
 .col { flex: 1 0 36px; display: flex; flex-direction: column; align-items: center; }
 .pair { height: 120px; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 3px; }
-.bar { width: 12px; border-radius: 3px 3px 0 0; min-height: 0; }
+.bar { flex: 1; max-width: 12px; border-radius: 4px 4px 0 0; min-height: 0; display: block; }
 .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
 .toplist { margin: 0; padding: 0; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; counter-reset: rank; }
 .toplist li { display: flex; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); counter-increment: rank; }
@@ -271,3 +271,33 @@ body:has(.detail) { overflow: hidden; }
 .vac-text { flex: 1; min-width: 0; min-height: 44px; border: 0; background: none; color: var(--text); text-align: left; font-size: 16px; padding: 0; }
 .vac-pen { color: var(--muted); font-size: 13px; }
 .vac-list li.editing { background: var(--in-soft); border-radius: 8px; padding-left: 6px; }
+
+/* 통계 대시보드 */
+:root { --chart-in: #1f6feb; --chart-out: #d9730d; }
+@media (prefers-color-scheme: dark) { :root { --chart-in: #4f8ff7; --chart-out: #d07d2e; } }
+.dot.in, .bar.in, .hbar.in { background: var(--chart-in); }
+.dot.out, .bar.out, .hbar.out { background: var(--chart-out); }
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; min-width: 0; }
+.kpi.in { border-top: 3px solid var(--chart-in); }
+.kpi.out { border-top: 3px solid var(--chart-out); }
+.kpi-title { font-size: 13px; color: var(--muted); font-weight: 600; }
+.kpi-value { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi-sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.section-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { min-height: 36px; padding: 0 12px; border: 0; background: var(--surface); color: var(--muted); font-weight: 600; font-size: 13px; }
+.seg button[aria-pressed=true] { background: var(--text); color: var(--surface); }
+.chart-sel { margin-left: auto; font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.bars { gap: 2px; overflow-x: hidden; }
+.bars .col { flex: 1; min-width: 0; border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; border-radius: 6px; }
+.bars .col.on .pair { background: var(--line); border-radius: 4px; }
+.bars .label { white-space: nowrap; position: relative; z-index: 1; }
+.bars .pair { gap: 2px; width: 100%; justify-content: center; }
+.hbars { list-style: none; margin: 0; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; gap: 10px; }
+.hbar-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.hbar-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.hbar-val { color: var(--muted); font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hbar-track { height: 8px; background: var(--line); border-radius: 4px; margin-top: 4px; overflow: hidden; }
+.hbar { height: 100%; border-radius: 4px; }
+.hbar.muted { background: var(--muted); }

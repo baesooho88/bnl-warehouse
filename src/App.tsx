@@ -139,7 +139,7 @@ export default function App() {
   if (session === undefined) return <main className="empty">불러오는 중…</main>
   if (!session || !role) return <LoginScreen />
 
-  const tabs: Tab[] = role === 'admin' ? ['입출고', '검색', '통계', '달력', '올리기'] : ['입출고', '검색', '통계', '달력']
+  const tabs: Tab[] = role === 'admin' ? ['입출고', '통계', '달력', '검색', '올리기'] : ['입출고', '통계', '달력', '검색']
   const current = tabs.includes(tab) ? tab : '입출고'
   const goTab = (t: Tab) => {
     if (t === current) return
