@@ -80,4 +80,25 @@ describe('uploadFiles', () => {
     expect(remote.calls.replaceDays).toBe(0)
     expect(notify).not.toHaveBeenCalled()
   })
+
+  test('입고 파일에 다음 날 시트가 있어도 알림은 출고 날짜 기준(출고 0이 되지 않게)', async () => {
+    const { repo, setFileName } = setup()
+    const inb = XLSX.read(fixtureBytes('sinhang'))
+    const next = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(next, inb.Sheets['11.5'], '11.5')
+    XLSX.utils.book_append_sheet(next, inb.Sheets['11.5'], '11.6') // 입고 파일엔 다음 날 시트가 미리 있곤 하다
+    const inbound = { name: '신항.xlsx', data: new Uint8Array(XLSX.write(next, { type: 'array', bookType: 'xlsx' })).buffer }
+    const day = (d: string, title: string, header: string[], row: (string | number)[]) =>
+      XLSX.utils.aoa_to_sheet([[title], [null, d], header, row])
+    const wb = (name: string, sheets: [string, XLSX.WorkSheet][]) => {
+      const b = XLSX.utils.book_new()
+      for (const [n, s] of sheets) XLSX.utils.book_append_sheet(b, s, n)
+      return { name, data: new Uint8Array(XLSX.write(b, { type: 'array', bookType: 'xlsx' })).buffer }
+    }
+    const outHeader = ['', '센터', '입하', 'BL No', '호선', 'PO', '품명', '수량', '중량', '용적', 'BOX NO', '도착지', '입문', 'MEMO', '검수', '신청자명', '도착', 'Location']
+    const outbound = wb('출고.xlsx', [['11.5', day('11/5', '일일출하요청서', outHeader, [1, 'BNL', '', 'BL1', '', '', '품목', '1/1', '100', '', '', '가', '', '', '', '', '', ''])]])
+    const notify = vi.fn(async () => {})
+    await uploadFiles([inbound, outbound], { online: true, repo, now, notify, setFileName, saveRi })
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-11-05', outbound: 1 }))
+  })
 })

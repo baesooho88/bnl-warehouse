@@ -1,6 +1,6 @@
 import { parseRiWorkbook, type RiItem } from '../parsers/ri'
 import type { Repository } from '../storage/repository'
-import { formatMD } from './dates'
+import { addDays, formatMD } from './dates'
 import { importFiles, type ImportLine } from './importFiles'
 
 export interface UploadSummary {
@@ -47,7 +47,10 @@ export async function uploadFiles(
 
   if (inOut) {
     try {
-      const date = await deps.repo.latestDate()
+      // 입고 파일엔 다음 날 시트가 미리 들어 있곤 해서, 가장 최근 날짜를 그대로 쓰면 출고가 0으로 나간다 → 출고가 있는 가장 최근 날짜
+      const latest = await deps.repo.latestDate()
+      const week = latest ? (await deps.repo.getRange(addDays(latest, -7), latest)).outbound : []
+      const date = week.map((x) => x.baseDate).sort().at(-1) ?? latest
       if (date) {
         const d = await deps.repo.getRange(date, date)
         await deps.notify({ date, inbound: d.inbound.length, outbound: d.outbound.length, sameDay: d.outbound.filter((x) => x.sameDay).length })
