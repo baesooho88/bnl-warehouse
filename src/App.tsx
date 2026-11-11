@@ -170,7 +170,7 @@ export default function App() {
         <ListScreen date={date} onDateChange={changeDate} onOpenIn={openIn} onOpenOut={openOut}
           onGoUpload={() => goTab(role === 'admin' ? '올리기' : '입출고')} canUpload={role === 'admin'} dataVersion={dataVersion} />
       )}
-      {current === 'RI' && <RiScreen onOpen={openOut} dataVersion={dataVersion} />}
+      {current === 'RI' && <RiScreen />}
       {current === '검색' && <SearchScreen onOpenIn={openIn} onOpenOut={openOut} dataVersion={dataVersion} />}
       {current === '통계' && <StatsScreen dataVersion={dataVersion} />}
       {current === '달력' && <CalendarScreen canEdit={role === 'admin'} />}

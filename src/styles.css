@@ -324,7 +324,6 @@ button.og-section { width: 100%; border: 0; background: none; padding: 6px 0; te
 /* RI 검사 목록 */
 .ri-card { border-left-color: #c79a00; }
 .ri-card.ri-ok { border-left-color: #1b8a3a; opacity: .75; }
-.ri-info { border: 0; background: none; padding: 0; text-align: left; color: var(--text); font: inherit; }
 .ri-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
 .ri-actions .btn { min-height: 40px; padding: 0 16px; }
 .badge.ok { background: #e3f5e8; color: #1b6b35; }
