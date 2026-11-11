@@ -34,7 +34,7 @@ export function OutboundGroups({ items, onOpen }: { items: Outbound[]; onOpen: (
               {x.seq !== null && <span className="og-seq">{x.seq}</span>}
               {x.sameDay && <span className="badge urgent">당일착</span>}
               {needsInspection(x) && <span className="badge inspect">검사필요</span>}
-              <span className="og-item">B/L {x.bl ?? '-'}</span>
+              <span className="og-item">{x.bl ?? '-'}</span>
             </span>
             <span className="og-line2">{x.qtyText ?? '-'} · {kg(x.weightKg)}{showDest && x.destination ? ` · ${x.destination}` : ''}</span>
             <span className="og-chev" aria-hidden>›</span>
