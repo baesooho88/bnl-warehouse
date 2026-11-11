@@ -1,4 +1,6 @@
+import { parseRiWorkbook, type RiItem } from '../parsers/ri'
 import type { Repository } from '../storage/repository'
+import { formatMD } from './dates'
 import { importFiles, type ImportLine } from './importFiles'
 
 export interface UploadSummary {
@@ -14,17 +16,36 @@ export interface UploadSummary {
  */
 export async function uploadFiles(
   files: { name: string; data: ArrayBuffer }[],
-  deps: { online: boolean; repo: Repository; now: Date; notify: (s: UploadSummary) => Promise<void>; setFileName: (name: string) => void },
+  deps: {
+    online: boolean; repo: Repository; now: Date; notify: (s: UploadSummary) => Promise<void>; setFileName: (name: string) => void
+    saveRi: (date: string, items: RiItem[]) => Promise<void>
+  },
 ): Promise<ImportLine[]> {
   if (!deps.online) return [{ level: 'error', text: '❌ 인터넷 연결이 필요해요' }]
 
   const lines: ImportLine[] = []
+  let inOut = false // 입출고 알림은 입출고 파일이 반영됐을 때만
   for (const f of files) {
+    const name = f.name.normalize('NFC').replace(/\.xlsx?$/i, '')
+    let ri: ReturnType<typeof parseRiWorkbook> = null
+    try { ri = parseRiWorkbook(new Uint8Array(f.data), f.name) } catch { /* 못 읽는 파일은 아래 입출고 쪽에서 오류로 알린다 */ }
+    if (ri) {
+      if ('error' in ri) { lines.push({ level: 'error', text: `❌ ${name}: ${ri.error}` }); continue }
+      try {
+        await deps.saveRi(ri.date, ri.items)
+        lines.push({ level: 'ok', text: `✅ ${name}: ${formatMD(ri.date)} RI 작업표 ${ri.items.length}건 반영` })
+      } catch (e) {
+        lines.push({ level: 'error', text: `❌ ${name}: 저장하지 못했어요 (${e instanceof Error ? e.message : String(e)})` })
+      }
+      continue
+    }
     deps.setFileName(f.name) // 업로드 기록에 남길 파일명
-    lines.push(...(await importFiles([f], deps.repo, deps.now)))
+    const got = await importFiles([f], deps.repo, deps.now)
+    inOut ||= got.some((l) => l.level === 'ok')
+    lines.push(...got)
   }
 
-  if (lines.some((l) => l.level === 'ok')) {
+  if (inOut) {
     try {
       const date = await deps.repo.latestDate()
       if (date) {

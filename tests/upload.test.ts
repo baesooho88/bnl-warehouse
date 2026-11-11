@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto'
+import * as XLSX from 'xlsx'
 import { describe, expect, test, vi } from 'vitest'
 import { uploadFiles } from '../src/lib/upload'
 import { createCloudRepository } from '../src/storage/cloudRepository'
@@ -7,6 +8,7 @@ import { createFakeRemote } from './helpers/fakeRemote'
 import { fixtureBytes } from './helpers/fixtures'
 
 const now = new Date(2026, 10, 5)
+const saveRi = async () => {}
 let n = 0
 const setup = () => {
   const remote = createFakeRemote()
@@ -20,7 +22,7 @@ describe('uploadFiles', () => {
   test('오프라인이면 해석·저장하지 않고 안내', async () => {
     const { remote, repo, setFileName } = setup()
     const notify = vi.fn(async () => {})
-    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: false, repo, now, notify, setFileName })
+    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: false, repo, now, notify, setFileName, saveRi })
     expect(lines).toEqual([{ level: 'error', text: '❌ 인터넷 연결이 필요해요' }])
     expect(remote.calls.replaceDays).toBe(0)
     expect(notify).not.toHaveBeenCalled()
@@ -29,7 +31,7 @@ describe('uploadFiles', () => {
   test('성공하면 가장 최근 기준일 건수로 알림을 한 번 요청', async () => {
     const { remote, repo, setFileName } = setup()
     const notify = vi.fn(async () => {})
-    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: true, repo, now, notify, setFileName })
+    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: true, repo, now, notify, setFileName, saveRi })
     expect(lines[0].level).toBe('ok')
     expect(notify).toHaveBeenCalledTimes(1)
     expect(notify).toHaveBeenCalledWith({ date: '2026-11-05', inbound: 1, outbound: 0, sameDay: 0 })
@@ -40,7 +42,7 @@ describe('uploadFiles', () => {
     const { repo, setFileName } = setup()
     const seen: string[] = []
     await uploadFiles([file('신항.xlsx', 'sinhang'), file('출고.xlsx', 'outbound')], {
-      online: true, repo, now, notify: async () => {}, setFileName: (x) => { seen.push(x); setFileName(x) },
+      online: true, repo, now, notify: async () => {}, setFileName: (x) => { seen.push(x); setFileName(x) }, saveRi,
     })
     expect(seen).toEqual(['신항.xlsx', '출고.xlsx'])
   })
@@ -48,7 +50,7 @@ describe('uploadFiles', () => {
   test('알림 실패는 경고 한 줄만 추가', async () => {
     const { repo, setFileName } = setup()
     const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], {
-      online: true, repo, now, notify: async () => { throw new Error('x') }, setFileName,
+      online: true, repo, now, notify: async () => { throw new Error('x') }, setFileName, saveRi,
     })
     expect(lines.at(-1)).toEqual({ level: 'warn', text: '⚠️ 알림을 보내지 못했어요' })
     expect(lines[0].level).toBe('ok')
@@ -58,8 +60,24 @@ describe('uploadFiles', () => {
     const { remote, repo, setFileName } = setup()
     remote.failNext('replaceDays')
     const notify = vi.fn(async () => {})
-    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: true, repo, now, notify, setFileName })
+    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: true, repo, now, notify, setFileName, saveRi })
     expect(lines.every((l) => l.level === 'error')).toBe(true)
+    expect(notify).not.toHaveBeenCalled()
+  })
+
+  test('RI 작업표는 RI로 저장하고 입출고 알림은 보내지 않는다', async () => {
+    const { remote, repo, setFileName } = setup()
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+      ['B/L No.', 'Description.', 'RI 준비 위치'], ['TESTBL0001', '테스트 장비', '0-E'],
+    ]), 'Sheet1')
+    const data = new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' })).buffer
+    const saved = vi.fn(async () => {})
+    const notify = vi.fn(async () => {})
+    const lines = await uploadFiles([{ name: 'RI 준비자재(2026.11.11).xlsx', data }], { online: true, repo, now, notify, setFileName, saveRi: saved })
+    expect(lines).toEqual([{ level: 'ok', text: '✅ RI 준비자재(2026.11.11): 11.11 RI 작업표 1건 반영' }])
+    expect(saved).toHaveBeenCalledWith('2026-11-11', [expect.objectContaining({ bl: 'TESTBL0001', riLocation: '0-E' })])
+    expect(remote.calls.replaceDays).toBe(0)
     expect(notify).not.toHaveBeenCalled()
   })
 })

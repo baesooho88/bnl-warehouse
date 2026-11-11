@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { formatMD } from '../lib/dates'
 import type { ImportLine } from '../lib/importFiles'
+import { saveRi } from '../inspection/ri'
 import { uploadFiles } from '../lib/upload'
 import { repo, setCurrentFileName } from '../repo'
 import { supabase } from '../storage/cloud/supabase'
@@ -30,6 +31,7 @@ export function UploadScreen({ onDataChanged, dataVersion }: { onDataChanged: ()
         repo,
         now: new Date(),
         setFileName: setCurrentFileName,
+        saveRi: (date, items) => saveRi(supabase, date, items),
         notify: async (summary) => {
           const { error } = await supabase.functions.invoke('notify', { body: summary })
           if (error) throw error
@@ -46,7 +48,7 @@ export function UploadScreen({ onDataChanged, dataVersion }: { onDataChanged: ()
   return (
     <>
       <h1 className="screen-title">엑셀 올리기</h1>
-      <p className="hint">북항·신항 보세운송현황과 한화오션 출하요청서 최신 파일을 한 번에 골라 주세요. 같은 날짜는 새 파일 내용으로 바뀌고, 직원 앱에 바로 반영돼요.</p>
+      <p className="hint">북항·신항 보세운송현황, 한화오션 출하요청서, RI 준비자재 최신 파일을 한 번에 골라 주세요. 같은 날짜는 새 파일 내용으로 바뀌고, 직원 앱에 바로 반영돼요.</p>
       <label className={`btn primary file-btn${busy ? ' disabled' : ''}`}>
         {busy ? '처리 중…' : '파일 선택'}
         <input type="file" multiple disabled={busy}

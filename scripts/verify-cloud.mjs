@@ -23,7 +23,7 @@ const callFn = (name, body, token) =>
 
 // 1. 비로그인
 const anon = client()
-for (const t of ['inbound', 'outbound', 'upload_log', 'vacations', 'container_status', 'inspections']) {
+for (const t of ['inbound', 'outbound', 'upload_log', 'vacations', 'container_status', 'inspections', 'ri_items']) {
   const { data, error } = await anon.from(t).select('*').limit(1)
   check(!!error || data.length === 0, `비로그인 ${t} 읽기 차단`)
 }
@@ -97,6 +97,12 @@ try {
   check(!(await staff.from('inspections').delete().eq('bl', 'VERIFY-BL-2099')).error, '직원 검사 완료 되돌리기')
   check((await callFn('notify', { kind: 'inspection', date: TEST_DATE, bl: '홍길동' }, staffSession?.access_token)).status === 400, '직원 검사 알림: 형식 틀린 B/L → 400')
 
+  // RI 작업표: 관리자만 하루치 교체, 직원은 읽기만
+  const ri = [{ base_date: TEST_DATE, idx: 0, bl: 'VERIFY-BL-2099', item: '테스트' }]
+  check(!(await admin.rpc('replace_ri', { base_date: TEST_DATE, rows: ri })).error, '관리자 RI 작업표 올리기')
+  check(!!(await staff.rpc('replace_ri', { base_date: TEST_DATE, rows: [] })).error, '직원 RI 작업표 올리기 거부')
+  check((await staff.from('ri_items').select('bl').eq('base_date', TEST_DATE)).data?.length === 1, '직원은 RI 작업표를 읽을 수 있음')
+
   // 7. 직원 세션으로 공용 계정 비밀번호를 바꿔도 PIN 로그인이 살아남는다(서버가 되돌림)
   const sabotage = await staff.auth.updateUser({ password: crypto.randomUUID() })
   check((await callFn('staff-login', { pin: STAFF_PIN })).status === 200, `직원이 계정 비밀번호를 바꿔도(${sabotage.error ? '변경 거부됨' : '변경됨'}) PIN 로그인 유지`)
@@ -107,6 +113,7 @@ try {
   check((await countVac()) === 0, `테스트 휴가(${TEST_DATE}) 정리`)
   await admin.from('container_status').delete().eq('bl', 'VERIFY-BL-2099')
   await admin.from('inspections').delete().eq('bl', 'VERIFY-BL-2099')
+  await admin.rpc('replace_ri', { base_date: TEST_DATE, rows: [] })
   await staff.removeChannel(channel)
   await staff.removeChannel(vChannel)
   await staff.auth.signOut({ scope: 'local' })
