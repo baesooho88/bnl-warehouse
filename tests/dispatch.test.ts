@@ -42,3 +42,11 @@ test('두 번 나온 순번·읽지 못한 줄은 문제로 알려 준다(나중
 test('도착 월이 기준월보다 많이 작으면 다음 해(12월 → 1월)', () => {
   expect(parseDispatch(['1월 2일 도착', '1 : 1TX1'], '2026-12-31').bySeq.get(1)?.arrive).toBe('2027-01-02')
 })
+
+test("차종 뒤 T 없이 쓴 줄도 읽는다: 'TRX4' → TR×4, 'LBX2' → LB×2", () => {
+  const { bySeq, problems } = parseDispatch(['당착', '6, 7 : TRX4 (울산 - 테스트공장 / 25T)', '14 : LBX2 (보트/6650X2350X3250)'], '2026-11-11')
+  expect(problems).toEqual([])
+  expect(bySeq.get(6)).toMatchObject({ vehicles: 'TR×4', note: '울산 - 테스트공장 · 25T' })
+  expect(bySeq.get(7)?.vehicles).toBe('TR×4')
+  expect(bySeq.get(14)).toMatchObject({ vehicles: 'LB×2', note: '보트 · 6650X2350X3250' })
+})

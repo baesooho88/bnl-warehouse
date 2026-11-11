@@ -54,11 +54,11 @@ function seqList(s: string): number[] | null {
   return out
 }
 
-/** '8TX1, 5TX1' → '8T×1 · 5T×1', 'TRTX1' → 'TR×1' */
+/** '8TX1, 5TX1' → '8T×1 · 5T×1', 'TRTX1'·'TRX4' → 'TR×1'·'TR×4', 'LBX2' → 'LB×2' (차종 뒤 T는 있을 때도 없을 때도 있다) */
 function vehicleText(s: string): string | null {
-  const out = s.split(',').map((p) => p.trim().toUpperCase().match(/^(\d+(?:\.\d+)?|[A-Z]+)TX(\d+)$/))
+  const out = s.split(',').map((p) => p.trim().toUpperCase().match(/^(?:(\d+(?:\.\d+)?)T|([A-Z]+?)T?)X(\d+)$/))
   if (out.some((v) => !v)) return null
-  return out.map((v) => (/^\d/.test(v![1]) ? `${v![1]}T×${v![2]}` : `${v![1]}×${v![2]}`)).join(' · ')
+  return out.map((v) => (v![1] ? `${v![1]}T×${v![3]}` : `${v![2]}×${v![3]}`)).join(' · ')
 }
 
 /** 기준일보다 반년 이상 앞선 달이면 다음 해로 본다(12월 배차 → 1월 도착) */
