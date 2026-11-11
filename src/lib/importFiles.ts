@@ -1,4 +1,4 @@
-import type { Kind, ParseResult } from '../domain/types'
+import type { Kind, Outbound, ParseResult } from '../domain/types'
 import { parseWorkbook } from '../parsers/workbook'
 import type { Repository } from '../storage/repository'
 import { formatMD } from './dates'
@@ -6,6 +6,21 @@ import { formatMD } from './dates'
 export type ImportLine = { level: 'ok' | 'warn' | 'error'; text: string }
 
 const KINDS: Kind[] = ['입고-북항', '입고-신항', '출고']
+/**
+ * 배차는 파일의 가장 최근 날짜에만 붙는다. 같이 들어온 전날 시트가 저장된 배차를 지우지 않도록,
+ * 배차 없이 들어온 날은 저장돼 있던 배차를 순번으로 이어 붙인다.
+ */
+async function keepDispatch(repo: Repository, dates: string[], outbound: Outbound[]) {
+  const bare = dates.filter((d) => !outbound.some((o) => o.baseDate === d && o.dispatch))
+  if (!bare.length) return
+  const old = (await repo.getRange(bare[0], bare[bare.length - 1])).outbound.filter((o) => o.dispatch)
+  for (const d of bare) {
+    const bySeq = new Map(old.filter((o) => o.baseDate === d && o.seq !== null).map((o) => [o.seq, o.dispatch!]))
+    if (!old.some((o) => o.baseDate === d)) continue
+    for (const o of outbound) if (o.baseDate === d) o.dispatch = bySeq.get(o.seq) ?? { line: 0, arrive: null, vehicles: '', note: null, invar: false }
+  }
+}
+
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 /** 파일마다: 해석 → 종류별로 하루치 통째 교체 → 결과 메시지. 한 파일의 실패가 다른 파일을 막지 않는다. */
@@ -37,6 +52,7 @@ export async function importFiles(files: { name: string; data: ArrayBuffer }[], 
         const set = new Set(dates)
         const inbound = kind === '출고' ? [] : parsed.inbound.filter((x) => kind.endsWith(x.port) && set.has(x.baseDate))
         const outbound = kind === '출고' ? parsed.outbound.filter((x) => set.has(x.baseDate)) : []
+        if (kind === '출고') await keepDispatch(repo, dates, outbound)
         await repo.replaceDays(kind, dates, inbound, outbound)
 
         const range = dates.length === 1 ? formatMD(dates[0]) : `${formatMD(dates[0])}~${formatMD(dates[dates.length - 1])}`

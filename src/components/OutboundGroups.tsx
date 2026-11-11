@@ -7,11 +7,18 @@ import { kg, tons } from './format'
 
 /**
  * 출고를 묶어 접어 둔다. 배차가 붙은 날은 도착일 → 차량(배차 줄)으로, 아니면 도착지별로.
- * 펼치면 한 건 2줄. 날짜가 바뀌면 부모가 key로 새로 만든다(모두 접힘).
+ * 묶음 머리에 입문시간·검사필요 수, 펼치면 한 건 2줄(B/L). 날짜가 바뀌면 부모가 key로 새로 만든다(모두 접힘).
  */
 export function OutboundGroups({ items, onOpen }: { items: Outbound[]; onOpen: (x: Outbound) => void }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set())
   const toggle = (k: string) => setOpen((s) => { const n = new Set(s); if (!n.delete(k)) n.add(k); return n })
+
+  // 펼치지 않아도 보이게: 입문시간과 검사필요 건수는 묶음 머리에
+  const times = (list: Outbound[]) => [...new Set(list.flatMap((x) => (x.gateTime ? [x.gateTime] : [])))].join('·')
+  const inspect = (list: Outbound[]) => {
+    const n = list.filter(needsInspection).length
+    return n > 0 && <span className="badge inspect">검사필요 {n}</span>
+  }
 
   const group = (k: string, head: React.ReactNode, list: Outbound[], showDest = false) => {
     const isOpen = open.has(k)
@@ -27,8 +34,7 @@ export function OutboundGroups({ items, onOpen }: { items: Outbound[]; onOpen: (
               {x.seq !== null && <span className="og-seq">{x.seq}</span>}
               {x.sameDay && <span className="badge urgent">당일착</span>}
               {needsInspection(x) && <span className="badge inspect">검사필요</span>}
-              {x.gateTime && <b>{x.gateTime}</b>}
-              <span className="og-item">{x.item ?? '(품명 없음)'}</span>
+              <span className="og-item">B/L {x.bl ?? '-'}</span>
             </span>
             <span className="og-line2">{x.qtyText ?? '-'} · {kg(x.weightKg)}{showDest && x.destination ? ` · ${x.destination}` : ''}</span>
             <span className="og-chev" aria-hidden>›</span>
@@ -57,9 +63,11 @@ export function OutboundGroups({ items, onOpen }: { items: Outbound[]; onOpen: (
                   {g.vehicles
                     ? vehicleChips(g.vehicles).map((c, i) => <span key={i} className={`og-veh ${c.tone}`}>{c.icon} {c.label}</span>)
                     : <span className="og-veh none">배차 전 출발</span>}
+                  {inspect(g.items)}
                   {g.note && <span className="og-note">{g.note}</span>}
                 </span>
                 <span className="og-disp2">
+                  {times(g.items) && <b className="og-time">{times(g.items)} · </b>}
                   {[...new Set(g.items.map((x) => x.destination ?? '도착지 없음'))].join(' · ')} · {g.items.length}건 · {tons(g.weightKg)}
                 </span>
               </span>
@@ -75,7 +83,8 @@ export function OutboundGroups({ items, onOpen }: { items: Outbound[]; onOpen: (
       {groupOutbound(items).map((g) => group(g.destination, (
         <>
           <span className="og-dest">{g.destination}</span>
-          <span className="og-sum">{g.items.length}건 · {tons(g.weightKg)}</span>
+          {inspect(g.items)}
+          <span className="og-sum">{times(g.items) && <b className="og-time">{times(g.items)} · </b>}{g.items.length}건 · {tons(g.weightKg)}</span>
           {g.sameDay > 0 && <span className="badge urgent">당일착 {g.sameDay}</span>}
         </>
       ), g.items))}

@@ -76,3 +76,19 @@ test('배차 시트 → 연결 건수 한 줄, 문제는 경고 한 줄, 저장�
   ])
   expect((await repo.getRange('2026-11-10', '2026-11-10')).outbound[0].dispatch?.vehicles).toBe('5T×1')
 })
+
+test('다음 날 파일을 올려도 전날 배차는 남는다(전날 시트엔 배차가 안 붙으므로)', async () => {
+  const header = [null, '센터', '입하', 'BL No', '호선', 'PO', '품명', '수량', '중량', '용적', 'BOX NO', '도착지', '입문', 'MEMO', '검수', '신청자명', '도착', 'Location']
+  const day = (d: string, seq: number) => XLSX.utils.aoa_to_sheet([['일일출하요청서'], [null, d], header, [seq, 'BNL', '', `BL${seq}`, '', '', '품목', '1/1', '100', '', '', '가', '09시', '', '', '', '', '']])
+  const book = (sheets: [string, XLSX.WorkSheet][]) => {
+    const wb = XLSX.utils.book_new()
+    for (const [name, s] of sheets) XLSX.utils.book_append_sheet(wb, s, name)
+    return file('출하요청서.xlsx', new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' })))
+  }
+  const repo = freshRepo()
+  await importFiles([book([['11.10', day('11/10', 1)], ['배차', XLSX.utils.aoa_to_sheet([['11월 11일 도착'], ['1 : 5TX1']])]])], repo, now)
+  await importFiles([book([['11.10', day('11/10', 1)], ['11.11', day('11/11', 2)], ['배차', XLSX.utils.aoa_to_sheet([['11월 12일 도착'], ['2 : 1TX1']])]])], repo, now)
+  const got = await repo.getRange('2026-11-10', '2026-11-11')
+  expect(got.outbound.find((o) => o.baseDate === '2026-11-10')?.dispatch?.vehicles).toBe('5T×1')
+  expect(got.outbound.find((o) => o.baseDate === '2026-11-11')?.dispatch?.vehicles).toBe('1T×1')
+})
