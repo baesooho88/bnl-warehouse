@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { InboundCard } from '../components/InboundCard'
 import { useContainerStatuses } from '../inbound/useContainerStatuses'
+import { useInspections } from '../inspection/useInspections'
 import { OutboundCard } from '../components/OutboundCard'
 import type { Inbound, Outbound } from '../domain/types'
 import { formatDay } from '../lib/dates'
@@ -10,6 +11,7 @@ import type { DayData } from '../storage/repository'
 export function SearchScreen(props: { onOpenIn: (x: Inbound) => void; onOpenOut: (x: Outbound) => void; dataVersion: number }) {
   const [query, setQuery] = useState('')
   const [result, setResult] = useState<DayData | null>(null)
+  const { done } = useInspections()
   const { statuses } = useContainerStatuses(result?.inbound.map((x) => x.bl) ?? [])
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export function SearchScreen(props: { onOpenIn: (x: Inbound) => void; onOpenOut:
         <section key={d}>
           <div className="card-date">{formatDay(d)}</div>
           {result!.inbound.filter((x) => x.baseDate === d).map((x) => <InboundCard key={x.id} item={x} onOpen={props.onOpenIn} statuses={statuses} />)}
-          {result!.outbound.filter((x) => x.baseDate === d).map((x) => <OutboundCard key={x.id} item={x} onOpen={props.onOpenOut} />)}
+          {result!.outbound.filter((x) => x.baseDate === d).map((x) => <OutboundCard key={x.id} item={x} onOpen={props.onOpenOut} inspected={done} />)}
         </section>
       ))}
     </>

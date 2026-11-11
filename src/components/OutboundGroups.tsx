@@ -9,14 +9,14 @@ import { kg, tons } from './format'
  * 출고를 묶어 접어 둔다. 배차가 붙은 날은 도착일 → 차량(배차 줄)으로, 아니면 도착지별로.
  * 묶음 머리에 입문시간·검사필요 수, 펼치면 한 건 2줄(B/L). 날짜가 바뀌면 부모가 key로 새로 만든다(모두 접힘).
  */
-export function OutboundGroups({ items, onOpen }: { items: Outbound[]; onOpen: (x: Outbound) => void }) {
+export function OutboundGroups({ items, onOpen, inspected }: { items: Outbound[]; onOpen: (x: Outbound) => void; inspected?: { has: (bl: string) => boolean } }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set())
   const toggle = (k: string) => setOpen((s) => { const n = new Set(s); if (!n.delete(k)) n.add(k); return n })
 
   // 펼치지 않아도 보이게: 입문시간과 검사필요 건수는 묶음 머리에
   const times = (list: Outbound[]) => [...new Set(list.flatMap((x) => (x.gateTime ? [x.gateTime] : [])))].join('·')
   const inspect = (list: Outbound[]) => {
-    const n = list.filter(needsInspection).length
+    const n = list.filter((x) => needsInspection(x, inspected)).length
     return n > 0 && <span className="badge inspect">검사필요 {n}</span>
   }
 
@@ -33,7 +33,7 @@ export function OutboundGroups({ items, onOpen }: { items: Outbound[]; onOpen: (
             <span className="og-line1">
               {x.seq !== null && <span className="og-seq">{x.seq}</span>}
               {x.sameDay && <span className="badge urgent">당일착</span>}
-              {needsInspection(x) && <span className="badge inspect">검사필요</span>}
+              {needsInspection(x, inspected) && <span className="badge inspect">검사필요</span>}
               <span className="og-item">{x.bl ?? '-'}</span>
             </span>
             <span className="og-line2">{x.qtyText ?? '-'} · {kg(x.weightKg)}{showDest && x.destination ? ` · ${x.destination}` : ''}</span>

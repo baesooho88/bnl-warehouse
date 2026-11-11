@@ -4,9 +4,10 @@ import { useContainerStatuses } from '../inbound/useContainerStatuses'
 import { supabase } from '../storage/cloud/supabase'
 import { num } from '../components/format'
 import type { Inbound, Outbound } from '../domain/types'
-import { formatMD } from '../lib/dates'
+import { formatMD, todayIso } from '../lib/dates'
 import { splitPhones } from '../lib/phone'
 import { needsInspection } from '../lib/urgent'
+import { useInspections } from '../inspection/useInspections'
 
 export type Detail = { kind: 'in'; item: Inbound } | { kind: 'out'; item: Outbound }
 
@@ -90,6 +91,8 @@ function InboundBody({ x, canEdit }: { x: Inbound; canEdit: boolean }) {
 }
 
 function OutboundBody({ x }: { x: Outbound }) {
+  const { done } = useInspections()
+  const riDone = x.bl ? done.get(x.bl) : undefined
   return (
     <>
       <h2>{x.item ?? '(품명 없음)'}{x.sameDay && ' · 당일착'}</h2>
@@ -97,7 +100,7 @@ function OutboundBody({ x }: { x: Outbound }) {
         ['상차일', d(x.baseDate)], ['도착 요청일', d(x.arriveDate)], ['입문시간', x.gateTime], ['도착지', x.destination],
         ['순번', num(x.seq)], ['센터', x.center], ['BNL 입하일자', d(x.bnlInDate)], ['B/L', x.bl], ['호선', x.hull], ['PO', x.po],
         ['요청수량', x.qtyText], ['중량(kg)', num(x.weightKg)], ['용적(CBM)', num(x.cbm)], ['BOX NO', x.boxNo],
-        ['MEMO', <WithPhones text={x.memo} />], ['입고 검수 일자', needsInspection(x) ? <span className="badge inspect">검사필요</span> : d(x.inspectedDate)], ['신청자', x.requester], ['Location', x.location],
+        ['MEMO', <WithPhones text={x.memo} />], ['입고 검수 일자', needsInspection(x) && riDone ? <span className="badge ok">RI 검사 완료 {formatMD(todayIso(new Date(riDone)))}</span> : needsInspection(x) ? <span className="badge inspect">검사필요</span> : d(x.inspectedDate)], ['신청자', x.requester], ['Location', x.location],
       ]} />
     </>
   )

@@ -1,18 +1,20 @@
-// 업로드 알림 발송 (스펙 v2 7장). 관리자만 호출 가능.
+// 알림 발송 (스펙 v2 7장). 관리자만 호출 가능 — 단 RI 검사 완료 알림은 직원도.
 import webpush from 'npm:web-push@3.6.7'
-import { env, requireAdmin, serviceClient } from '../_shared/admin.ts'
+import { env, requireMember, serviceClient } from '../_shared/admin.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { buildMessage } from '../_shared/notifyText.ts'
 
 Deno.serve(async (req) => {
   const pre = preflight(req)
   if (pre) return pre
-  const who = await requireAdmin(req)
+  const who = await requireMember(req)
   if (who instanceof Response) return who
 
   let message
   try {
-    message = buildMessage(await req.json())
+    const body = await req.json()
+    if (who.role !== 'admin' && body?.kind !== 'inspection') return json({ error: 'forbidden' }, 403)
+    message = buildMessage(body)
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'bad request' }, 400)
   }

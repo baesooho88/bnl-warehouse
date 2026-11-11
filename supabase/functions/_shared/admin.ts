@@ -11,12 +11,20 @@ export const env = (name: string) => {
 export const serviceClient = (): SupabaseClient =>
   createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false } })
 
-/** 호출자가 관리자(app_metadata.role = admin)인지 확인. 아니면 403 응답을 돌려준다. */
-export async function requireAdmin(req: Request): Promise<{ userId: string } | Response> {
+/** 호출자가 관리자 또는 직원(app_metadata.role)인지 확인. 아니면 401/403 응답을 돌려준다. */
+export async function requireMember(req: Request): Promise<{ userId: string; role: 'admin' | 'staff' } | Response> {
   const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '')
   if (!token) return json({ error: 'unauthorized' }, 401)
   const { data, error } = await serviceClient().auth.getUser(token)
   if (error || !data.user) return json({ error: 'unauthorized' }, 401)
-  if (data.user.app_metadata?.role !== 'admin') return json({ error: 'forbidden' }, 403)
-  return { userId: data.user.id }
+  const role = data.user.app_metadata?.role
+  if (role !== 'admin' && role !== 'staff') return json({ error: 'forbidden' }, 403)
+  return { userId: data.user.id, role }
+}
+
+/** 호출자가 관리자인지 확인. 아니면 401/403 응답을 돌려준다. */
+export async function requireAdmin(req: Request): Promise<{ userId: string } | Response> {
+  const who = await requireMember(req)
+  if (who instanceof Response) return who
+  return who.role === 'admin' ? who : json({ error: 'forbidden' }, 403)
 }

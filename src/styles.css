@@ -321,3 +321,10 @@ body:has(.detail) { overflow: hidden; }
 button.og-section { width: 100%; border: 0; background: none; padding: 6px 0; text-align: left; cursor: pointer; }
 .og-section-sum { margin-left: auto; font-weight: 600; }
 .card .top .bl { color: var(--text); font-size: 15px; }
+/* RI 검사 목록 */
+.ri-card { display: flex; align-items: center; gap: 10px; border-left-color: #c79a00; }
+.ri-card.ri-ok { border-left-color: #1b8a3a; opacity: .75; }
+.ri-info { flex: 1; min-width: 0; border: 0; background: none; padding: 0; text-align: left; color: var(--text); }
+.ri-card .btn { flex-shrink: 0; padding: 0 14px; }
+.badge.ok { background: #e3f5e8; color: #1b6b35; }
+@media (prefers-color-scheme: dark) { .badge.ok { background: #173322; color: #7fd99a; } }

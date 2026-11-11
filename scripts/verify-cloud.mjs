@@ -23,7 +23,7 @@ const callFn = (name, body, token) =>
 
 // 1. 비로그인
 const anon = client()
-for (const t of ['inbound', 'outbound', 'upload_log', 'vacations', 'container_status']) {
+for (const t of ['inbound', 'outbound', 'upload_log', 'vacations', 'container_status', 'inspections']) {
   const { data, error } = await anon.from(t).select('*').limit(1)
   check(!!error || data.length === 0, `비로그인 ${t} 읽기 차단`)
 }
@@ -91,6 +91,12 @@ try {
   check(!!(await staff.from('container_status').upsert({ ...cs, status: '입고예정' }, { onConflict: 'bl,container_no' })).error, '직원 컨테이너 상태 변경 거부')
   check((await staff.from('container_status').select('status').eq('bl', cs.bl)).data?.[0]?.status === '반입됨', '직원은 상태를 읽을 수 있음(바뀌지 않음)')
 
+  // RI 검사 완료: 직원도 표시·되돌리기 가능. 알림은 실제 폰으로 가므로 여기서 보내지 않는다.
+  check(!(await staff.from('inspections').upsert({ bl: 'VERIFY-BL-2099' }, { onConflict: 'bl' })).error, '직원 검사 완료 표시')
+  check((await admin.from('inspections').select('bl').eq('bl', 'VERIFY-BL-2099')).data?.length === 1, '관리자도 검사 완료가 보임')
+  check(!(await staff.from('inspections').delete().eq('bl', 'VERIFY-BL-2099')).error, '직원 검사 완료 되돌리기')
+  check((await callFn('notify', { kind: 'inspection', date: TEST_DATE, bl: '홍길동' }, staffSession?.access_token)).status === 400, '직원 검사 알림: 형식 틀린 B/L → 400')
+
   // 7. 직원 세션으로 공용 계정 비밀번호를 바꿔도 PIN 로그인이 살아남는다(서버가 되돌림)
   const sabotage = await staff.auth.updateUser({ password: crypto.randomUUID() })
   check((await callFn('staff-login', { pin: STAFF_PIN })).status === 200, `직원이 계정 비밀번호를 바꿔도(${sabotage.error ? '변경 거부됨' : '변경됨'}) PIN 로그인 유지`)
@@ -100,6 +106,7 @@ try {
   await admin.from('vacations').delete().eq('date', TEST_DATE)
   check((await countVac()) === 0, `테스트 휴가(${TEST_DATE}) 정리`)
   await admin.from('container_status').delete().eq('bl', 'VERIFY-BL-2099')
+  await admin.from('inspections').delete().eq('bl', 'VERIFY-BL-2099')
   await staff.removeChannel(channel)
   await staff.removeChannel(vChannel)
   await staff.auth.signOut({ scope: 'local' })

@@ -12,6 +12,7 @@ import { local, remote, repo, sync } from './repo'
 import { CalendarScreen } from './screens/CalendarScreen'
 import { DetailScreen, type Detail } from './screens/DetailScreen'
 import { ListScreen } from './screens/ListScreen'
+import { RiScreen } from './screens/RiScreen'
 import { LoginScreen } from './screens/LoginScreen'
 import { SearchScreen } from './screens/SearchScreen'
 import { StatsScreen } from './screens/StatsScreen'
@@ -139,7 +140,7 @@ export default function App() {
   if (session === undefined) return <main className="empty">불러오는 중…</main>
   if (!session || !role) return <LoginScreen />
 
-  const tabs: Tab[] = role === 'admin' ? ['입출고', '통계', '달력', '검색', '올리기'] : ['입출고', '통계', '달력', '검색']
+  const tabs: Tab[] = role === 'admin' ? ['입출고', 'RI', '통계', '달력', '검색', '올리기'] : ['입출고', 'RI', '통계', '달력', '검색']
   const current = tabs.includes(tab) ? tab : '입출고'
   const goTab = (t: Tab) => {
     if (t === current) return
@@ -169,6 +170,7 @@ export default function App() {
         <ListScreen date={date} onDateChange={changeDate} onOpenIn={openIn} onOpenOut={openOut}
           onGoUpload={() => goTab(role === 'admin' ? '올리기' : '입출고')} canUpload={role === 'admin'} dataVersion={dataVersion} />
       )}
+      {current === 'RI' && <RiScreen onOpen={openOut} dataVersion={dataVersion} />}
       {current === '검색' && <SearchScreen onOpenIn={openIn} onOpenOut={openOut} dataVersion={dataVersion} />}
       {current === '통계' && <StatsScreen dataVersion={dataVersion} />}
       {current === '달력' && <CalendarScreen canEdit={role === 'admin'} />}

@@ -3,6 +3,7 @@ import { DateNav } from '../components/DateNav'
 import { tons } from '../components/format'
 import { InboundCard } from '../components/InboundCard'
 import { useContainerStatuses } from '../inbound/useContainerStatuses'
+import { useInspections } from '../inspection/useInspections'
 import { OutboundGroups } from '../components/OutboundGroups'
 import type { Inbound, Outbound } from '../domain/types'
 import { repo } from '../repo'
@@ -32,6 +33,7 @@ export function ListScreen(props: {
   const inbound = data?.inbound ?? []
   const { statuses } = useContainerStatuses(inbound.map((x) => x.bl))
   const outbound = data?.outbound ?? []
+  const { done } = useInspections()
   const empty = data !== null && !inbound.length && !outbound.length
 
   return (
@@ -61,7 +63,7 @@ export function ListScreen(props: {
             ))}
           </div>
           {filter !== '출고' && inbound.map((x) => <InboundCard key={x.id} item={x} onOpen={props.onOpenIn} statuses={statuses} />)}
-          {filter !== '입고' && <OutboundGroups key={props.date} items={outbound} onOpen={props.onOpenOut} />}
+          {filter !== '입고' && <OutboundGroups key={props.date} items={outbound} onOpen={props.onOpenOut} inspected={done} />}
         </>
       )}
     </>
