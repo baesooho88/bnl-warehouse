@@ -28,13 +28,13 @@ describe('uploadFiles', () => {
     expect(notify).not.toHaveBeenCalled()
   })
 
-  test('성공하면 가장 최근 기준일 건수로 알림을 한 번 요청', async () => {
+  test('성공하면 바뀐 종류의 날짜·건수로 알림을 한 번 요청', async () => {
     const { remote, repo, setFileName } = setup()
     const notify = vi.fn(async () => {})
     const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: true, repo, now, notify, setFileName, saveRi })
     expect(lines[0].level).toBe('ok')
     expect(notify).toHaveBeenCalledTimes(1)
-    expect(notify).toHaveBeenCalledWith({ date: '2026-11-05', inbound: 1, outbound: 0, sameDay: 0 })
+    expect(notify).toHaveBeenCalledWith({ kind: 'upload', updates: [{ type: '입고', date: '2026-11-05', count: 1 }] })
     expect((await remote.fetchLogsAfter(0))[0]).toMatchObject({ kind: '입고-신항' })
   })
 
@@ -81,7 +81,7 @@ describe('uploadFiles', () => {
     expect(notify).not.toHaveBeenCalled()
   })
 
-  test('입고 파일에 다음 날 시트가 있어도 알림은 출고 날짜 기준(출고 0이 되지 않게)', async () => {
+  test('입고·출고 날짜가 달라도 각자 자기 날짜로 알린다', async () => {
     const { repo, setFileName } = setup()
     const inb = XLSX.read(fixtureBytes('sinhang'))
     const next = XLSX.utils.book_new()
@@ -99,6 +99,9 @@ describe('uploadFiles', () => {
     const outbound = wb('출고.xlsx', [['11.5', day('11/5', '일일출하요청서', outHeader, [1, 'BNL', '', 'BL1', '', '', '품목', '1/1', '100', '', '', '가', '', '', '', '', '', ''])]])
     const notify = vi.fn(async () => {})
     await uploadFiles([inbound, outbound], { online: true, repo, now, notify, setFileName, saveRi })
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-11-05', outbound: 1 }))
+    expect(notify).toHaveBeenCalledWith({ kind: 'upload', updates: [
+      { type: '입고', date: '2026-11-06', count: 1 },
+      { type: '출고', date: '2026-11-05', count: 1, sameDay: 0 },
+    ] })
   })
 })

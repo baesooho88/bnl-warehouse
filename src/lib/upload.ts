@@ -1,13 +1,12 @@
 import { parseRiWorkbook, type RiItem } from '../parsers/ri'
 import type { Repository } from '../storage/repository'
-import { addDays, formatMD } from './dates'
-import { importFiles, type ImportLine } from './importFiles'
+import { formatMD } from './dates'
+import { importFiles, type ImportLine, type Updated } from './importFiles'
 
+/** 알림: 이번 업로드로 바뀐 종류마다 그 날짜와 그날 건수 */
 export interface UploadSummary {
-  date: string
-  inbound: number
-  outbound: number
-  sameDay: number
+  kind: 'upload'
+  updates: { type: Updated['type']; date: string; count: number; sameDay?: number }[]
 }
 
 /**
@@ -24,7 +23,7 @@ export async function uploadFiles(
   if (!deps.online) return [{ level: 'error', text: '❌ 인터넷 연결이 필요해요' }]
 
   const lines: ImportLine[] = []
-  let inOut = false // 입출고 알림은 입출고 파일이 반영됐을 때만
+  const updated: Updated[] = [] // 알림은 입출고·배차가 반영됐을 때만
   for (const f of files) {
     const name = f.name.normalize('NFC').replace(/\.xlsx?$/i, '')
     let ri: ReturnType<typeof parseRiWorkbook> = null
@@ -40,21 +39,24 @@ export async function uploadFiles(
       continue
     }
     deps.setFileName(f.name) // 업로드 기록에 남길 파일명
-    const got = await importFiles([f], deps.repo, deps.now)
-    inOut ||= got.some((l) => l.level === 'ok')
-    lines.push(...got)
+    lines.push(...(await importFiles([f], deps.repo, deps.now, updated)))
   }
 
-  if (inOut) {
+  if (updated.length) {
     try {
-      // 입고 파일엔 다음 날 시트가 미리 들어 있곤 해서, 가장 최근 날짜를 그대로 쓰면 출고가 0으로 나간다 → 출고가 있는 가장 최근 날짜
-      const latest = await deps.repo.latestDate()
-      const week = latest ? (await deps.repo.getRange(addDays(latest, -7), latest)).outbound : []
-      const date = week.map((x) => x.baseDate).sort().at(-1) ?? latest
-      if (date) {
+      // 종류마다 가장 최근 날짜 하나(입고 파일의 다음 날 시트가 출고 날짜를 끌고 가지 않게 종류별로 따로)
+      const latest = new Map<Updated['type'], string>()
+      for (const u of updated) if (u.date > (latest.get(u.type) ?? '')) latest.set(u.type, u.date)
+      const updates: UploadSummary['updates'] = []
+      for (const type of ['입고', '출고', '배차'] as const) {
+        const date = latest.get(type)
+        if (!date) continue
         const d = await deps.repo.getRange(date, date)
-        await deps.notify({ date, inbound: d.inbound.length, outbound: d.outbound.length, sameDay: d.outbound.filter((x) => x.sameDay).length })
+        if (type === '입고') updates.push({ type, date, count: d.inbound.length })
+        if (type === '출고') updates.push({ type, date, count: d.outbound.length, sameDay: d.outbound.filter((x) => x.sameDay).length })
+        if (type === '배차') updates.push({ type, date, count: d.outbound.filter((x) => x.dispatch?.vehicles).length })
       }
+      await deps.notify({ kind: 'upload', updates })
     } catch {
       lines.push({ level: 'warn', text: '⚠️ 알림을 보내지 못했어요' })
     }

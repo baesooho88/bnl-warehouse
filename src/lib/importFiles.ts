@@ -4,6 +4,8 @@ import type { Repository } from '../storage/repository'
 import { formatMD } from './dates'
 
 export type ImportLine = { level: 'ok' | 'warn' | 'error'; text: string }
+/** 실제로 반영된 종류와 그 파일의 가장 최근 날짜(알림용) */
+export type Updated = { type: '입고' | '출고' | '배차'; date: string }
 
 const KINDS: Kind[] = ['입고-북항', '입고-신항', '출고']
 /**
@@ -24,7 +26,7 @@ async function keepDispatch(repo: Repository, dates: string[], outbound: Outboun
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 /** 파일마다: 해석 → 종류별로 하루치 통째 교체 → 결과 메시지. 한 파일의 실패가 다른 파일을 막지 않는다. */
-export async function importFiles(files: { name: string; data: ArrayBuffer }[], repo: Repository, now: Date): Promise<ImportLine[]> {
+export async function importFiles(files: { name: string; data: ArrayBuffer }[], repo: Repository, now: Date, updated: Updated[] = []): Promise<ImportLine[]> {
   const lines: ImportLine[] = []
   for (const f of files) {
     const name = f.name.normalize('NFC').replace(/\.xlsx?$/i, '')
@@ -44,6 +46,7 @@ export async function importFiles(files: { name: string; data: ArrayBuffer }[], 
     }
 
     const okLines: ImportLine[] = []
+    const okUpdated: Updated[] = []
     try {
       for (const kind of KINDS) {
         const sheets = ok.filter((s) => s.kind === kind)
@@ -54,6 +57,7 @@ export async function importFiles(files: { name: string; data: ArrayBuffer }[], 
         const outbound = kind === '출고' ? parsed.outbound.filter((x) => set.has(x.baseDate)) : []
         if (kind === '출고') await keepDispatch(repo, dates, outbound)
         await repo.replaceDays(kind, dates, inbound, outbound)
+        okUpdated.push({ type: kind === '출고' ? '출고' : '입고', date: dates[dates.length - 1] })
 
         const range = dates.length === 1 ? formatMD(dates[0]) : `${formatMD(dates[0])}~${formatMD(dates[dates.length - 1])}`
         const count = inbound.length + outbound.length
@@ -64,9 +68,13 @@ export async function importFiles(files: { name: string; data: ArrayBuffer }[], 
       continue
     }
     lines.push(...okLines)
+    updated.push(...okUpdated)
 
     for (const s of parsed.sheets) {
-      if (s.status === 'ok' && s.kind === null) lines.push({ level: 'ok', text: `✅ ${name}: 배차 ${formatMD(s.baseDate!)} 차량 ${s.count}건 연결` })
+      if (s.status === 'ok' && s.kind === null) {
+        lines.push({ level: 'ok', text: `✅ ${name}: 배차 ${formatMD(s.baseDate!)} 차량 ${s.count}건 연결` })
+        updated.push({ type: '배차', date: s.baseDate! })
+      }
       if (s.message && s.message !== '알 수 없는 양식')
         lines.push({ level: 'warn', text: `⚠️ ${name} ${s.sheetName} 시트: ${s.message}` })
     }

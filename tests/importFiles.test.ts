@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import * as XLSX from 'xlsx'
 import { describe, expect, test } from 'vitest'
-import { importFiles } from '../src/lib/importFiles'
+import { importFiles, type Updated } from '../src/lib/importFiles'
 import { createDexieRepository } from '../src/storage/dexieRepository'
 import type { Repository } from '../src/storage/repository'
 import { fixtureBytes } from './helpers/fixtures'
@@ -69,7 +69,9 @@ test('배차 시트 → 연결 건수 한 줄, 문제는 경고 한 줄, 저장�
   ]), '11.10')
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['11월 11일 도착'], ['1 : 5TX1'], ['7 : 1TX1']]), '배차')
   const repo = freshRepo()
-  const lines = await importFiles([file('11.10 출하요청서.xlsx', new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' })))], repo, now)
+  const updated: Updated[] = []
+  const lines = await importFiles([file('11.10 출하요청서.xlsx', new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' })))], repo, now, updated)
+  expect(updated).toEqual([{ type: '출고', date: '2026-11-10' }, { type: '배차', date: '2026-11-10' }])
   expect(lines.slice(1)).toEqual([
     { level: 'ok', text: '✅ 11.10 출하요청서: 배차 11.10 차량 1건 연결' },
     { level: 'warn', text: '⚠️ 11.10 출하요청서 배차 시트: 순번 7 출고에 없음' },

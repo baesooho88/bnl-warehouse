@@ -1,9 +1,8 @@
 // Node(테스트)·Deno 공용. 알림에는 날짜와 건수만 — 이름·전화번호는 들어갈 자리가 없다.
+/** 업로드 알림: 이번에 바뀐 종류(입고·출고·배차)마다 날짜와 그날 건수 */
 export interface UploadSummary {
-  date: string
-  inbound: number
-  outbound: number
-  sameDay: number
+  kind: 'upload'
+  updates: { type: '입고' | '출고' | '배차'; date: string; count: number; sameDay?: number }[]
 }
 
 const count = (n: unknown) => {
@@ -27,8 +26,13 @@ export interface InspectionDone {
 
 type Message = { title: string; body: string; tag: string; url: string }
 
+const md = (date: unknown) => {
+  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('날짜 형식이 올바르지 않아요')
+  return `${+date.slice(5, 7)}.${+date.slice(8, 10)}`
+}
+
 export function buildMessage(s: UploadSummary | ContainerArrival | InspectionDone): Message {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s.date)) throw new Error('날짜 형식이 올바르지 않아요')
+  if (s.kind !== 'upload') md(s.date)
   if ('kind' in s && s.kind === 'container') {
     const list = Array.isArray(s.containers) ? s.containers : []
     if (!list.length || list.some((c) => typeof c !== 'string' || !/^[A-Z0-9]{4,15}$/.test(c))) throw new Error('컨테이너 번호가 올바르지 않아요')
@@ -39,9 +43,13 @@ export function buildMessage(s: UploadSummary | ContainerArrival | InspectionDon
     if (typeof s.bl !== 'string' || !/^[A-Z0-9-]{4,25}$/.test(s.bl)) throw new Error('B/L 번호가 올바르지 않아요')
     return { title: '(주)부산신항로지텍', body: `B/L ${s.bl} 검사 완료됐어요`, tag: 'bnl-inspection', url: `?date=${s.date}` }
   }
-  s = s as UploadSummary
-  const md = `${+s.date.slice(5, 7)}.${+s.date.slice(8, 10)}`
-  const same = count(s.sameDay)
-  const body = `${md} 입출고가 올라왔어요 — 입고 ${count(s.inbound)} · 출고 ${count(s.outbound)}${same ? ` (당일착 ${same})` : ''}`
-  return { title: '(주)부산신항로지텍', body, tag: 'bnl-upload', url: `?date=${s.date}` }
+  const ups = Array.isArray(s.updates) ? s.updates : []
+  if (!ups.length || ups.length > 3) throw new Error('바뀐 내용이 올바르지 않아요')
+  const parts = ups.map((u) => {
+    if (!['입고', '출고', '배차'].includes(u?.type)) throw new Error('종류가 올바르지 않아요')
+    const same = u.type === '출고' ? count(u.sameDay ?? 0) : 0
+    return `${u.type} ${md(u.date)} ${count(u.count)}${u.type === '배차' ? '대' : '건'}${same ? `(당일착 ${same})` : ''}`
+  })
+  const last = ups.map((u) => u.date).sort().at(-1)!
+  return { title: '(주)부산신항로지텍', body: `${parts.join(' · ')} 업데이트됐어요`, tag: 'bnl-upload', url: `?date=${last}` }
 }
