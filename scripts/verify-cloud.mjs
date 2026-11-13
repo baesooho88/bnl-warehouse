@@ -95,7 +95,7 @@ try {
   check(!(await staff.from('inspections').upsert({ bl: 'VERIFY-BL-2099' }, { onConflict: 'bl' })).error, '직원 검사 완료 표시')
   check((await admin.from('inspections').select('bl').eq('bl', 'VERIFY-BL-2099')).data?.length === 1, '관리자도 검사 완료가 보임')
   check(!(await staff.from('inspections').delete().eq('bl', 'VERIFY-BL-2099')).error, '직원 검사 완료 되돌리기')
-  check((await callFn('notify', { kind: 'inspection', date: TEST_DATE, bl: '홍길동' }, staffSession?.access_token)).status === 400, '직원 검사 알림: 형식 틀린 B/L → 400')
+  check((await callFn('notify', { kind: 'inspection', date: TEST_DATE, bl: 'VERIFY-BL-2099' }, staffSession?.access_token)).status === 403, '직원은 알림을 보낼 수 없음 → 403')
 
   // RI 작업표: 관리자만 하루치 교체, 직원은 읽기만
   const ri = [{ base_date: TEST_DATE, idx: 0, bl: 'VERIFY-BL-2099', item: '테스트' }]

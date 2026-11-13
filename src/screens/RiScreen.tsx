@@ -12,7 +12,7 @@ const time = (iso: string) => {
   return `${d.getMonth() + 1}.${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-/** RI: 관리자가 올린 RI 작업표만(B/L 하나에 카드 하나). 검사 완료는 B/L 단위로 모두에게 바로 반영되고 알림이 간다. */
+/** RI: 관리자가 올린 RI 작업표만(B/L 하나에 카드 하나). 검사 완료는 B/L 단위로 모두에게 바로 반영된다(알림은 없음). */
 export function RiScreen() {
   const [date, setDate] = useState<string | null>(null)
   const [items, setItems] = useState<RiItem[] | null>(null)
@@ -33,16 +33,12 @@ export function RiScreen() {
   useEffect(loadRi, [loadRi])
   useEffect(() => onRiChange(supabase, loadRi), [loadRi])
 
-  async function toggle(bl: string, baseDate: string, on: boolean) {
+  async function toggle(bl: string, on: boolean) {
     setBusy(bl)
     setMessage('')
     try {
       await setDone(supabase, bl, on)
       reload()
-      if (on) {
-        const { error } = await supabase.functions.invoke('notify', { body: { kind: 'inspection', date: baseDate, bl } })
-        if (error) setMessage('완료로 바꿨지만 알림을 보내지 못했어요')
-      }
     } catch {
       setMessage('저장하지 못했어요. 인터넷을 확인해 주세요')
     } finally {
@@ -50,7 +46,7 @@ export function RiScreen() {
     }
   }
 
-  const card = (key: string, bl: string, baseDate: string, body: React.ReactNode, side: string[], note: string | null) => {
+  const card = (key: string, bl: string, body: React.ReactNode, side: string[], note: string | null) => {
     const at = done.get(bl)
     const main = (
       <>
@@ -69,7 +65,7 @@ export function RiScreen() {
         </div>
         {note && <div className="note-box"><b>비고</b> {note}</div>}
         <div className="ri-actions">
-          <button className={`btn${at ? '' : ' primary'}`} disabled={busy === bl} onClick={() => void toggle(bl, baseDate, !at)}>
+          <button className={`btn${at ? '' : ' primary'}`} disabled={busy === bl} onClick={() => void toggle(bl, !at)}>
             {at ? '되돌리기' : '검사 완료'}
           </button>
         </div>
@@ -94,7 +90,7 @@ export function RiScreen() {
       ) : <p className="empty">이 날짜에는 RI 작업이 없어요</p>}
       {message && <p className="sheet-msg" role="alert">{message}</p>}
 
-      {cards.map((rows) => card(`ri${rows[0].idx}`, rows[0].bl, rows[0].baseDate, rows.map((x) => (
+      {cards.map((rows) => card(`ri${rows[0].idx}`, rows[0].bl, rows.map((x) => (
         <div key={x.idx}>
           <div className="item">{x.item ?? '(품명 없음)'}</div>
           <div className="meta">{[x.riLocation && `준비 위치 ${x.riLocation}`, x.hull && `호선 ${x.hull}`, x.po && `PO ${x.po}`, riQty(x.qtyText), x.box !== 'ALL' && x.box].filter(Boolean).join(' · ')}</div>

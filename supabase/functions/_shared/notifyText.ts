@@ -10,18 +10,12 @@ const count = (n: unknown) => {
   return n
 }
 
-/** 컨테이너 반입 알림: 컨테이너 번호(영문 대문자·숫자)만 싣는다 */
+/** 컨테이너 입고·반입 알림: 컨테이너 번호(영문 대문자·숫자)만 싣는다 */
 export interface ContainerArrival {
   kind: 'container'
   date: string
   containers: string[]
-}
-
-/** RI 검사 완료 알림: B/L 번호(영문 대문자·숫자·-)만 싣는다. 직원도 보낼 수 있는 유일한 알림. */
-export interface InspectionDone {
-  kind: 'inspection'
-  date: string
-  bl: string
+  status?: '입고됨' | '반입됨' // 없으면 반입됨(이전 앱)
 }
 
 type Message = { title: string; body: string; tag: string; url: string }
@@ -31,17 +25,15 @@ const md = (date: unknown) => {
   return `${+date.slice(5, 7)}.${+date.slice(8, 10)}`
 }
 
-export function buildMessage(s: UploadSummary | ContainerArrival | InspectionDone): Message {
+export function buildMessage(s: UploadSummary | ContainerArrival): Message {
   if (s.kind !== 'upload') md(s.date)
   if ('kind' in s && s.kind === 'container') {
     const list = Array.isArray(s.containers) ? s.containers : []
     if (!list.length || list.some((c) => typeof c !== 'string' || !/^[A-Z0-9]{4,15}$/.test(c))) throw new Error('컨테이너 번호가 올바르지 않아요')
-    const body = `컨테이너 ${list[0]}${list.length > 1 ? ` 외 ${list.length - 1}개` : ''} 반입됐어요`
+    const status = s.status ?? '반입됨'
+    if (status !== '입고됨' && status !== '반입됨') throw new Error('상태가 올바르지 않아요')
+    const body = `컨테이너 ${list[0]}${list.length > 1 ? ` 외 ${list.length - 1}개` : ''} ${status === '입고됨' ? '입고' : '반입'}됐어요`
     return { title: '(주)부산신항로지텍', body, tag: 'bnl-container', url: `?date=${s.date}` }
-  }
-  if ('kind' in s && s.kind === 'inspection') {
-    if (typeof s.bl !== 'string' || !/^[A-Z0-9-]{4,25}$/.test(s.bl)) throw new Error('B/L 번호가 올바르지 않아요')
-    return { title: '(주)부산신항로지텍', body: `B/L ${s.bl} 검사 완료됐어요`, tag: 'bnl-inspection', url: `?date=${s.date}` }
   }
   const ups = Array.isArray(s.updates) ? s.updates : []
   if (!ups.length || ups.length > 3) throw new Error('바뀐 내용이 올바르지 않아요')

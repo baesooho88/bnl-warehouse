@@ -33,12 +33,6 @@ test('컨테이너 반입 알림: 번호만 담고, 여러 개면 "외 N개"', (
 test('컨테이너 번호 형식이 틀리면 거부(이름 등 다른 글이 알림에 들어가지 않게)', () => {
   expect(() => buildMessage({ kind: 'container', date: '2026-11-10', containers: ['홍길동'] })).toThrow()
   expect(() => buildMessage({ kind: 'container', date: '2026-11-10', containers: [] })).toThrow()
-})
-
-test('검사 완료 알림: B/L 번호만 담는다', () => {
-  expect(buildMessage({ kind: 'inspection', date: '2026-11-11', bl: 'TESTBL0001' })).toEqual({
-    title: '(주)부산신항로지텍', body: 'B/L TESTBL0001 검사 완료됐어요', tag: 'bnl-inspection', url: '?date=2026-11-11',
-  })
-  expect(() => buildMessage({ kind: 'inspection', date: '2026-11-11', bl: '홍길동' })).toThrow()
-  expect(() => buildMessage({ kind: 'inspection', date: '2026-11-11', bl: 1 as unknown as string })).toThrow()
+  expect(buildMessage({ kind: 'container', date: '2026-11-10', containers: ['TEST1234567'], status: '입고됨' }).body).toBe('컨테이너 TEST1234567 입고됐어요')
+  expect(() => buildMessage({ kind: 'container', date: '2026-11-10', containers: ['TEST1234567'], status: '입고예정' as '입고됨' })).toThrow()
 })

@@ -106,7 +106,7 @@ function OutboundBody({ x }: { x: Outbound }) {
   )
 }
 
-/** 컨테이너별 상태. 관리자는 바꿀 수 있고, 반입됨으로 바꾸면 직원들에게 알림을 보낸다. */
+/** 컨테이너별 상태. 관리자는 바꿀 수 있고, 입고됨·반입됨으로 바꾸면 직원들에게 알림을 보낸다. */
 function ContainerTable({ x, canEdit }: { x: Inbound; canEdit: boolean }) {
   const { statuses, reload } = useContainerStatuses([x.bl])
   const [message, setMessage] = useState('')
@@ -115,8 +115,8 @@ function ContainerTable({ x, canEdit }: { x: Inbound; canEdit: boolean }) {
     try {
       await setStatus(supabase, x.bl, no, status)
       reload()
-      if (status === '반입됨') {
-        const { error } = await supabase.functions.invoke('notify', { body: { kind: 'container', date: x.baseDate, containers: [no] } })
+      if (status !== '입고예정') {
+        const { error } = await supabase.functions.invoke('notify', { body: { kind: 'container', date: x.baseDate, containers: [no], status } })
         if (error) setMessage('상태는 바꿨지만 알림을 보내지 못했어요')
       }
     } catch {

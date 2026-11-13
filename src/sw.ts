@@ -19,10 +19,12 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(m.title ?? '(주)부산신항로지텍', {
       body: m.body ?? '새 입출고가 올라왔어요',
       tag: m.tag ?? 'bnl-upload',
+      // 같은 종류 알림이 알림창에 남아 있으면 tag 교체가 소리·진동 없이 조용히 지나간다(TS 타입에 renotify가 없어 단언)
+      renotify: true,
       icon: 'pwa-192x192.png',
       badge: 'pwa-64x64.png',
       data: { url: m.url ?? '' },
-    }),
+    } as NotificationOptions),
   )
 })
 
