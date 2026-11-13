@@ -35,6 +35,14 @@ export async function fetchStock(client: SupabaseClient): Promise<{ date: string
   }
 }
 
+/** 저장 현황용: 재고 기준일과 건수(없으면 null) */
+export async function stockSummary(client: SupabaseClient): Promise<{ date: string; count: number } | null> {
+  const { data, count, error } = await client.from('stock_items').select('base_date', { count: 'exact' }).limit(1)
+  if (error) throw new Error(error.message)
+  const date = (data as { base_date: string }[])[0]?.base_date
+  return date ? { date, count: count ?? 0 } : null
+}
+
 const squash = (s: string | null | undefined) => (s ?? '').replace(/\s+/g, '').toUpperCase()
 
 /** 공백·대소문자 무시, B/L·품명·PO·Project·Location·BOX·입고번호·수입신고번호·화물관리번호 중 하나라도 들어 있으면 */

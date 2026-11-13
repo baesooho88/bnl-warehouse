@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { formatMD } from '../lib/dates'
 import type { ImportLine } from '../lib/importFiles'
 import { saveRi } from '../inspection/ri'
-import { saveStock } from '../stock/stock'
+import { saveStock, stockSummary } from '../stock/stock'
 import { uploadFiles } from '../lib/upload'
 import { repo, setCurrentFileName } from '../repo'
 import { supabase } from '../storage/cloud/supabase'
@@ -17,7 +17,10 @@ export function UploadScreen({ onDataChanged, dataVersion }: { onDataChanged: ()
   const [lines, setLines] = useState<ImportLine[]>([])
   const [coverage, setCoverage] = useState<Record<Kind, Coverage | null> | null>(null)
 
+  const [stock, setStock] = useState<{ date: string; count: number } | null | undefined>(undefined)
+
   useEffect(() => { repo.coverage().then(setCoverage) }, [dataVersion])
+  useEffect(() => { stockSummary(supabase).then(setStock).catch(() => setStock(undefined)) }, [dataVersion])
 
   async function onFiles(picked: File[]) {
     if (!picked.length) return
@@ -78,6 +81,10 @@ export function UploadScreen({ onDataChanged, dataVersion }: { onDataChanged: ()
             </div>
           )
         })}
+        <div>
+          <dt>재고</dt>
+          <dd>{stock ? `${formatMD(stock.date)} 기준 (${stock.count}건)` : stock === null ? '없음' : '…'}</dd>
+        </div>
       </dl>
       <AdminPanel />
     </>
