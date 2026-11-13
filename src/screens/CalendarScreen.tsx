@@ -9,6 +9,13 @@ const WEEK = ['일', '월', '화', '수', '목', '금', '토']
 // 칸이 좁아 이름만 쓰고 종류는 색으로 (연차·반차·기타)
 // 칸이 좁아 '10:00' → '10시', '09:30' → '9:30'
 const shortTime = (t: string) => (t.endsWith(':00') ? `${+t.slice(0, 2)}시` : `${+t.slice(0, 2)}:${t.slice(3)}`)
+// 공휴일은 앱이 떠 있는 동안 한 번만 받는다(실패하면 다음 화면 진입 때 다시)
+let holidaysReq: Promise<Map<string, string>> | null = null
+const fetchHolidays = () =>
+  (holidaysReq ??= supabase.functions.invoke<{ date: string; name: string }[]>('holidays').then(({ data, error }) => {
+    if (error || !data) throw error ?? new Error('no data')
+    return new Map(data.map((h) => [h.date, h.name]))
+  }).catch((e) => { holidaysReq = null; throw e }))
 const typeClass = (t: string) => (t === '일정' ? 'event' : t === '연차' ? 'full' : t === '기타' ? 'etc' : 'half')
 
 export function CalendarScreen({ canEdit }: { canEdit: boolean }) {
@@ -18,6 +25,8 @@ export function CalendarScreen({ canEdit }: { canEdit: boolean }) {
   const [state, setState] = useState<'loading' | 'ok' | 'offline' | 'error'>('loading')
   const [openDate, setOpenDate] = useState<string | null>(null)
   const [names, setNames] = useState<string[]>([])
+  const [holidays, setHolidays] = useState<Map<string, string>>(new Map())
+  useEffect(() => { fetchHolidays().then(setHolidays).catch(() => {}) }, [])
   const current = useRef(ym)
   current.current = ym
   const latest = useRef(0)
@@ -83,9 +92,11 @@ export function CalendarScreen({ canEdit }: { canEdit: boolean }) {
             const list = byDate.get(d) ?? []
             const { shown, more } = cellSummary(dayEntries(list))
             const dow = i % 7
+            const holiday = holidays.get(d)
             return (
               <button key={d} className={`cal-cell${d === today ? ' today' : ''}`} onClick={() => setOpenDate(d)}>
-                <span className={`cal-d${dow === 0 ? ' sun' : dow === 6 ? ' sat' : ''}`}>{+d.slice(8)}</span>
+                <span className={`cal-d${dow === 0 || holiday ? ' sun' : dow === 6 ? ' sat' : ''}`}>{+d.slice(8)}</span>
+                {holiday && <span className="cal-hol">{holiday}</span>}
                 {shown.map((v) => <span key={v.id} className={`cal-name ${typeClass(v.type)}`}>{v.type === '일정' && v.time ? `${shortTime(v.time)} ` : ''}{v.name}</span>)}
                 {more > 0 && <span className="cal-more">+{more}</span>}
               </button>

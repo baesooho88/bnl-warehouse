@@ -12,7 +12,7 @@
 | 역할 | `auth.users.raw_app_meta_data.role` (사용자가 바꿀 수 없음) |
 | 서버 비밀 값 | `npx supabase secrets list --remote` — `STAFF_EMAIL`, `STAFF_PASSWORD`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` |
 | DB 구조 | `supabase/migrations/` |
-| 서버 함수 | `supabase/functions/` — `staff-login`(로그인 전 호출, JWT 검사 끔), `set-staff-pin`, `notify` |
+| 서버 함수 | `supabase/functions/` — `staff-login`(로그인 전 호출, JWT 검사 끔), `set-staff-pin`, `notify`, `holidays`(구글 공휴일 캘린더 중계) |
 
 ## 직원 PIN 변경
 
@@ -48,7 +48,7 @@ Supabase › Authentication › Users › 관리자 › **Send password recovery
 ```bash
 npx supabase migration new <이름>     # supabase/migrations/ 에 SQL 작성
 npx supabase db push --remote
-npx supabase functions deploy staff-login set-staff-pin notify --use-api --remote
+npx supabase functions deploy staff-login set-staff-pin notify holidays --use-api --remote
 ```
 
 ## 점검
