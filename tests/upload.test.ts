@@ -9,6 +9,7 @@ import { fixtureBytes } from './helpers/fixtures'
 
 const now = new Date(2026, 10, 5)
 const saveRi = async () => {}
+const saveStock = async () => {}
 let n = 0
 const setup = () => {
   const remote = createFakeRemote()
@@ -22,7 +23,7 @@ describe('uploadFiles', () => {
   test('오프라인이면 해석·저장하지 않고 안내', async () => {
     const { remote, repo, setFileName } = setup()
     const notify = vi.fn(async () => {})
-    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: false, repo, now, notify, setFileName, saveRi })
+    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: false, repo, now, notify, setFileName, saveRi, saveStock })
     expect(lines).toEqual([{ level: 'error', text: '❌ 인터넷 연결이 필요해요' }])
     expect(remote.calls.replaceDays).toBe(0)
     expect(notify).not.toHaveBeenCalled()
@@ -31,7 +32,7 @@ describe('uploadFiles', () => {
   test('성공하면 바뀐 종류의 날짜·건수로 알림을 한 번 요청', async () => {
     const { remote, repo, setFileName } = setup()
     const notify = vi.fn(async () => {})
-    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: true, repo, now, notify, setFileName, saveRi })
+    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: true, repo, now, notify, setFileName, saveRi, saveStock })
     expect(lines[0].level).toBe('ok')
     expect(notify).toHaveBeenCalledTimes(1)
     expect(notify).toHaveBeenCalledWith({ kind: 'upload', updates: [{ type: '입고', date: '2026-11-05', count: 1 }] })
@@ -42,7 +43,7 @@ describe('uploadFiles', () => {
     const { repo, setFileName } = setup()
     const seen: string[] = []
     await uploadFiles([file('신항.xlsx', 'sinhang'), file('출고.xlsx', 'outbound')], {
-      online: true, repo, now, notify: async () => {}, setFileName: (x) => { seen.push(x); setFileName(x) }, saveRi,
+      online: true, repo, now, notify: async () => {}, setFileName: (x) => { seen.push(x); setFileName(x) }, saveRi, saveStock,
     })
     expect(seen).toEqual(['신항.xlsx', '출고.xlsx'])
   })
@@ -50,7 +51,7 @@ describe('uploadFiles', () => {
   test('알림 실패는 경고 한 줄만 추가', async () => {
     const { repo, setFileName } = setup()
     const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], {
-      online: true, repo, now, notify: async () => { throw new Error('x') }, setFileName, saveRi,
+      online: true, repo, now, notify: async () => { throw new Error('x') }, setFileName, saveRi, saveStock,
     })
     expect(lines.at(-1)).toEqual({ level: 'warn', text: '⚠️ 알림을 보내지 못했어요' })
     expect(lines[0].level).toBe('ok')
@@ -60,7 +61,7 @@ describe('uploadFiles', () => {
     const { remote, repo, setFileName } = setup()
     remote.failNext('replaceDays')
     const notify = vi.fn(async () => {})
-    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: true, repo, now, notify, setFileName, saveRi })
+    const lines = await uploadFiles([file('신항.xlsx', 'sinhang')], { online: true, repo, now, notify, setFileName, saveRi, saveStock })
     expect(lines.every((l) => l.level === 'error')).toBe(true)
     expect(notify).not.toHaveBeenCalled()
   })
@@ -74,7 +75,7 @@ describe('uploadFiles', () => {
     const data = new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' })).buffer
     const saved = vi.fn(async () => {})
     const notify = vi.fn(async () => {})
-    const lines = await uploadFiles([{ name: 'RI 준비자재(2026.11.11).xlsx', data }], { online: true, repo, now, notify, setFileName, saveRi: saved })
+    const lines = await uploadFiles([{ name: 'RI 준비자재(2026.11.11).xlsx', data }], { online: true, repo, now, notify, setFileName, saveRi: saved, saveStock })
     expect(lines).toEqual([{ level: 'ok', text: '✅ RI 준비자재(2026.11.11): 11.11 RI 작업표 1건 반영' }])
     expect(saved).toHaveBeenCalledWith('2026-11-11', [expect.objectContaining({ bl: 'TESTBL0001', riLocation: '0-E' })])
     expect(remote.calls.replaceDays).toBe(0)
@@ -98,7 +99,7 @@ describe('uploadFiles', () => {
     const outHeader = ['', '센터', '입하', 'BL No', '호선', 'PO', '품명', '수량', '중량', '용적', 'BOX NO', '도착지', '입문', 'MEMO', '검수', '신청자명', '도착', 'Location']
     const outbound = wb('출고.xlsx', [['11.5', day('11/5', '일일출하요청서', outHeader, [1, 'BNL', '', 'BL1', '', '', '품목', '1/1', '100', '', '', '가', '', '', '', '', '', ''])]])
     const notify = vi.fn(async () => {})
-    await uploadFiles([inbound, outbound], { online: true, repo, now, notify, setFileName, saveRi })
+    await uploadFiles([inbound, outbound], { online: true, repo, now, notify, setFileName, saveRi, saveStock })
     expect(notify).toHaveBeenCalledWith({ kind: 'upload', updates: [
       { type: '입고', date: '2026-11-06', count: 1 },
       { type: '출고', date: '2026-11-05', count: 1, sameDay: 0 },

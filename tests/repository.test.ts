@@ -59,19 +59,6 @@ describe('replaceDays', () => {
   })
 })
 
-describe('search', () => {
-  test('컨테이너 번호·호선, 대소문자·공백 무시', async () => {
-    expect((await repo.search('hmmu2248146')).inbound.map((x) => x.item)).toContain('ANCHOR CHAIN')
-    expect((await repo.search(' 2607 ')).inbound.map((x) => x.item)).toContain('ANCHOR CHAIN')
-  })
-  test('출고 도착지', async () => {
-    expect((await repo.search('한국야나세')).outbound.length).toBeGreaterThan(0)
-  })
-  test('빈 검색어는 빈 결과', async () => {
-    expect(await repo.search('   ')).toEqual({ inbound: [], outbound: [] })
-  })
-})
-
 describe('coverage / latestDate / clearAll', () => {
   test('종류별 날짜 범위', async () => {
     const c = await repo.coverage()

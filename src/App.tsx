@@ -171,7 +171,7 @@ export default function App() {
           onGoUpload={() => goTab(role === 'admin' ? '올리기' : '입출고')} canUpload={role === 'admin'} dataVersion={dataVersion} />
       )}
       {current === 'RI' && <RiScreen />}
-      {current === '검색' && <SearchScreen onOpenIn={openIn} onOpenOut={openOut} dataVersion={dataVersion} />}
+      {current === '검색' && <SearchScreen />}
       {current === '통계' && <StatsScreen dataVersion={dataVersion} />}
       {current === '달력' && <CalendarScreen canEdit={role === 'admin'} />}
       {current === '올리기' && role === 'admin' && <UploadScreen onDataChanged={dataChanged} dataVersion={dataVersion} />}

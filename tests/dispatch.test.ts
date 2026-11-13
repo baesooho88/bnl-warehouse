@@ -50,3 +50,10 @@ test("차종 뒤 T 없이 쓴 줄도 읽는다: 'TRX4' → TR×4, 'LBX2' → LB�
   expect(bySeq.get(7)?.vehicles).toBe('TR×4')
   expect(bySeq.get(14)).toMatchObject({ vehicles: 'LB×2', note: '보트 · 6650X2350X3250' })
 })
+
+test('차량 없이 글만 쓴 순번 줄은 그 순번 배차 줄의 비고로 붙인다(배차 없는 순번이면 문제로)', () => {
+  const { bySeq, problems } = parseDispatch(['당착', '21 : 오출고 테스트 같이 상차', '20, 21 : 11TX1 (부산 - 테스트A)', '9 : 아무 메모'], '2026-11-13')
+  expect(bySeq.get(20)).toMatchObject({ vehicles: '11T×1', note: '부산 - 테스트A · 21번 오출고 테스트 같이 상차' })
+  expect(bySeq.get(21)).toBe(bySeq.get(20))
+  expect(problems).toEqual(['읽지 못한 줄: 9 : 아무 메모'])
+})

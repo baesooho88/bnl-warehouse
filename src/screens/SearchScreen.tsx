@@ -1,43 +1,49 @@
-import { useEffect, useState } from 'react'
-import { InboundCard } from '../components/InboundCard'
-import { useContainerStatuses } from '../inbound/useContainerStatuses'
-import { useInspections } from '../inspection/useInspections'
-import { OutboundCard } from '../components/OutboundCard'
-import type { Inbound, Outbound } from '../domain/types'
-import { formatDay } from '../lib/dates'
-import { repo } from '../repo'
-import type { DayData } from '../storage/repository'
+import { useEffect, useMemo, useState } from 'react'
+import { formatMD } from '../lib/dates'
+import type { StockItem } from '../parsers/stock'
+import { supabase } from '../storage/cloud/supabase'
+import { fetchStock, searchStock } from '../stock/stock'
 
-export function SearchScreen(props: { onOpenIn: (x: Inbound) => void; onOpenOut: (x: Outbound) => void; dataVersion: number }) {
+const SHOW = 100 // 한두 글자 검색에 천 장 넘는 카드를 그리지 않게
+
+/** 검색: 관리자가 올린 최신 재고 파일만 검색한다(입출고 내역은 날짜 화면에서). */
+export function SearchScreen() {
   const [query, setQuery] = useState('')
-  const [result, setResult] = useState<DayData | null>(null)
-  const { done } = useInspections()
-  const { statuses } = useContainerStatuses(result?.inbound.map((x) => x.bl) ?? [])
+  const [stock, setStock] = useState<{ date: string | null; items: StockItem[] } | null>(null)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    if (!query.trim()) return setResult(null)
     let alive = true
-    const t = setTimeout(() => repo.search(query).then((r) => alive && setResult(r)), 300)
-    return () => { alive = false; clearTimeout(t) }
-  }, [query, props.dataVersion])
+    fetchStock(supabase).then((s) => alive && setStock(s)).catch(() => alive && setFailed(true))
+    return () => { alive = false }
+  }, [])
 
-  const dates = result ? [...new Set([...result.inbound, ...result.outbound].map((x) => x.baseDate))].sort().reverse() : []
+  const hits = useMemo(() => (stock ? searchStock(stock.items, query) : []), [stock, query])
+  const kg = (n: number | null) => (n === null ? null : `${n.toLocaleString()}kg`)
 
   return (
     <>
-      <h1 className="screen-title">검색</h1>
-      <input className="search" type="search" placeholder="B/L · 호선 · PO · 품명 · 컨테이너 · 도착지"
+      <h1 className="screen-title">재고 검색</h1>
+      <input className="search" type="search" placeholder="B/L · 품명 · PO · Project · Location · BOX"
         aria-label="검색어" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
-      {result && dates.length === 0 && <p className="empty">검색 결과가 없어요</p>}
-      {result && dates.length > 0 && (
-        <p className="hint">입고 {result.inbound.length}건 · 출고 {result.outbound.length}건</p>
+      {failed && <p className="empty">재고를 불러오지 못했어요. 인터넷을 확인해 주세요</p>}
+      {!failed && !stock && <p className="hint">재고 불러오는 중…</p>}
+      {stock && !stock.date && <p className="empty">아직 올라온 재고 파일이 없어요</p>}
+      {stock?.date && (
+        <p className="hint">
+          {formatMD(stock.date)} 기준 재고 {stock.items.length}건
+          {query.trim() && ` · 검색 결과 ${hits.length}건${hits.length > SHOW ? ` (앞 ${SHOW}건만 표시)` : ''}`}
+        </p>
       )}
-      {dates.map((d) => (
-        <section key={d}>
-          <div className="card-date">{formatDay(d)}</div>
-          {result!.inbound.filter((x) => x.baseDate === d).map((x) => <InboundCard key={x.id} item={x} onOpen={props.onOpenIn} statuses={statuses} />)}
-          {result!.outbound.filter((x) => x.baseDate === d).map((x) => <OutboundCard key={x.id} item={x} onOpen={props.onOpenOut} inspected={done} />)}
-        </section>
+      {stock?.date && query.trim() && hits.length === 0 && <p className="empty">검색 결과가 없어요</p>}
+      {hits.slice(0, SHOW).map((x) => (
+        <div key={x.idx} className="card">
+          <div className="top"><b className="bl">{x.bl}</b>{x.location && <span className="badge in">{x.location}</span>}</div>
+          <div className="item">{x.item ?? '(품명 없음)'}</div>
+          <div className="meta">{[x.box && `BOX ${x.box}`, x.qty !== null && `${x.qty}개`, kg(x.weightKg), x.cbm !== null && `${x.cbm}㎥`].filter(Boolean).join(' · ')}</div>
+          <div className="meta">{[x.inDate && `입고 ${formatMD(x.inDate)}`, x.po && `PO ${x.po}`, x.project && `Project ${x.project}`].filter(Boolean).join(' · ')}</div>
+          {x.note && <div className="note-box"><b>비고</b> {x.note}</div>}
+        </div>
       ))}
     </>
   )

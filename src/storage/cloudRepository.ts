@@ -9,7 +9,6 @@ import type { Repository } from './repository'
 export function createCloudRepository(local: LocalRepository, remote: Remote, fileName: () => string): Repository {
   return {
     getRange: (from, to) => local.getRange(from, to),
-    search: (q) => local.search(q),
     coverage: () => local.coverage(),
     latestDate: () => local.latestDate(),
     clearAll: () => local.clearAll(),

@@ -38,7 +38,6 @@ const sorted = (d: DayData): DayData => ({
   outbound: d.outbound.sort(byDateDescThenId),
 })
 
-const squash = (s: string | null | undefined) => (s ?? '').toLowerCase().replace(/\s+/g, '')
 
 function coverageOf(dates: string[]): Coverage | null {
   const uniq = [...new Set(dates)].sort()
@@ -73,18 +72,6 @@ export function createDexieRepository(dbName = 'bnl-warehouse'): LocalRepository
         db.outbound.where('baseDate').between(from, to, true, true).toArray(),
       ])
       return sorted({ inbound, outbound })
-    },
-
-    async search(query) {
-      const q = squash(query)
-      if (!q) return { inbound: [], outbound: [] }
-      // shortcut: 전체를 읽어 메모리에서 거른다 — 하루 수십 건 규모 기준, 수만 건을 넘으면 인덱스 검색으로 교체
-      const hit = (...fields: (string | null | undefined)[]) => fields.some((f) => squash(f).includes(q))
-      const [inbound, outbound] = await Promise.all([db.inbound.toArray(), db.outbound.toArray()])
-      return sorted({
-        inbound: inbound.filter((x) => hit(x.bl, x.hull, x.po, x.item, x.destination, ...x.containers.map((c) => c.no))),
-        outbound: outbound.filter((x) => hit(x.bl, x.hull, x.po, x.item, x.destination)),
-      })
     },
 
     async coverage() {

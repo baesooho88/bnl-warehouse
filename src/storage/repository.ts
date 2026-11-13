@@ -17,7 +17,6 @@ export interface Repository {
   replaceDays(kind: Kind, baseDates: string[], inbound: Inbound[], outbound: Outbound[]): Promise<void>
   /** from~to(포함) 기간. 결과는 baseDate 내림차순, 같은 날은 id 순. */
   getRange(from: string, to: string): Promise<DayData>
-  search(query: string): Promise<DayData>
   coverage(): Promise<Record<Kind, Coverage | null>>
   latestDate(): Promise<string | null>
   clearAll(): Promise<void>

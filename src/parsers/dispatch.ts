@@ -7,6 +7,7 @@ const MATERIALS = ['인바', '해양'] // 비고의 자재 이름: 인바만 INV
  * 출하요청서 파일의 '배차' 시트(한 칸에 한 줄)를 읽는다. 형식:
  *   당착 | 11월 11일 도착 [(인바)]      ← 머리줄: 아래 줄들의 도착일(당착 = null)
  *   1, 2 ~ 4 : 11TX1, 5TX1 (지역 - 업체 | 인바/09시)
+ *   21 : 오출고 합판 같이 상차              ← 차량 대신 글만 쓴 줄: 그 순번이 탄 배차 줄 비고에 붙인다
  * 같은 순번이 또 나오면 나중 줄이 이기고, 문제로 알려 준다.
  */
 export function parseDispatch(lines: string[], baseDate: string): { bySeq: Map<number, Dispatch>; problems: string[] } {
@@ -15,6 +16,7 @@ export function parseDispatch(lines: string[], baseDate: string): { bySeq: Map<n
   let arrive: string | null = null
   let headerInvar = false
   let line = 0
+  const memos: { seqs: number[]; text: string; raw: string }[] = []
 
   for (const raw of lines) {
     const text = raw.trim()
@@ -28,6 +30,7 @@ export function parseDispatch(lines: string[], baseDate: string): { bySeq: Map<n
     const m = text.match(/^([\d\s,~]+):\s*([^()]+?)\s*(?:\((.*)\))?$/)
     const seqs = m && seqList(m[1])
     const vehicles = m && vehicleText(m[2])
+    if (seqs?.length && !vehicles) { memos.push({ seqs, text: m![2] + (m![3] ? ` (${m![3]})` : ''), raw: text }); continue }
     if (!seqs?.length || !vehicles) { problems.push(`읽지 못한 줄: ${text}`); continue }
     line++
     const parts = (m[3] ?? '').split('/').map((s) => s.trim()).filter(Boolean)
@@ -37,6 +40,12 @@ export function parseDispatch(lines: string[], baseDate: string): { bySeq: Map<n
       if (bySeq.has(s)) problems.push(`순번 ${s} 두 번 나옴`)
       bySeq.set(s, d)
     }
+  }
+  // 메모는 배차 줄이 다 모인 뒤에 붙인다(메모가 차량 줄보다 먼저 나와도 되게). 배차 없는 순번의 메모만 문제로 남긴다.
+  for (const { seqs, text, raw } of memos) {
+    const ds = seqs.map((s) => bySeq.get(s))
+    if (ds.some((d) => !d)) { problems.push(`읽지 못한 줄: ${raw}`); continue }
+    for (const d of new Set(ds)) d!.note = [d!.note, `${seqs.join(', ')}번 ${text}`].filter(Boolean).join(' · ')
   }
   return { bySeq, problems }
 }

@@ -1,4 +1,5 @@
 import { parseRiWorkbook, type RiItem } from '../parsers/ri'
+import { parseStockWorkbook, type StockItem } from '../parsers/stock'
 import type { Repository } from '../storage/repository'
 import { formatMD } from './dates'
 import { importFiles, type ImportLine, type Updated } from './importFiles'
@@ -18,6 +19,7 @@ export async function uploadFiles(
   deps: {
     online: boolean; repo: Repository; now: Date; notify: (s: UploadSummary) => Promise<void>; setFileName: (name: string) => void
     saveRi: (date: string, items: RiItem[]) => Promise<void>
+    saveStock: (date: string, items: StockItem[]) => Promise<void>
   },
 ): Promise<ImportLine[]> {
   if (!deps.online) return [{ level: 'error', text: '❌ 인터넷 연결이 필요해요' }]
@@ -26,6 +28,18 @@ export async function uploadFiles(
   const updated: Updated[] = [] // 알림은 입출고·배차가 반영됐을 때만
   for (const f of files) {
     const name = f.name.normalize('NFC').replace(/\.xlsx?$/i, '')
+    let stock: ReturnType<typeof parseStockWorkbook> = null
+    try { stock = parseStockWorkbook(new Uint8Array(f.data), f.name, deps.now) } catch { /* 못 읽는 파일은 아래 입출고 쪽에서 오류로 알린다 */ }
+    if (stock) {
+      if ('error' in stock) { lines.push({ level: 'error', text: `❌ ${name}: ${stock.error}` }); continue }
+      try {
+        await deps.saveStock(stock.date, stock.items)
+        lines.push({ level: 'ok', text: `✅ ${name}: ${formatMD(stock.date)} 기준 재고 ${stock.items.length}건 반영` })
+      } catch (e) {
+        lines.push({ level: 'error', text: `❌ ${name}: 저장하지 못했어요 (${e instanceof Error ? e.message : String(e)})` })
+      }
+      continue
+    }
     let ri: ReturnType<typeof parseRiWorkbook> = null
     try { ri = parseRiWorkbook(new Uint8Array(f.data), f.name) } catch { /* 못 읽는 파일은 아래 입출고 쪽에서 오류로 알린다 */ }
     if (ri) {
