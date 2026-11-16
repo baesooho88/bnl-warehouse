@@ -41,12 +41,15 @@ export function parseWorkbook(data: ArrayBuffer | Uint8Array, fileName: string, 
       result.sheets.push({ kind, sheetName, baseDate, status: 'ok', count: list.length })
     }
   }
-  if (dispatch) attachDispatch(result, dispatch.sheetName, dispatch.lines)
+  if (dispatch) {
+    result.dispatchLines = dispatch
+    attachDispatch(result, dispatch.sheetName, dispatch.lines)
+  }
   return result
 }
 
 /** 배차 시트에는 날짜가 없다: 파일의 가장 최근 출고 날짜 것으로 본다. 배차에 없는 건은 이미 나간 당착(차량 없음). */
-function attachDispatch(result: ParseResult, sheetName: string, lines: string[]) {
+export function attachDispatch(result: ParseResult, sheetName: string, lines: string[]) {
   const baseDate = result.outbound.map((o) => o.baseDate).sort().at(-1)
   if (!baseDate) return
   const day = result.outbound.filter((o) => o.baseDate === baseDate)

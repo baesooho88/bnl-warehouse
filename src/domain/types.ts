@@ -81,4 +81,6 @@ export interface ParseResult {
   inbound: Inbound[]
   outbound: Outbound[]
   sheets: SheetResult[]
+  /** 배차 탭 원문: 같이 올린 다른(더 최신) 출고 파일에 빌려 주려고 남긴다 */
+  dispatchLines?: { sheetName: string; lines: string[] }
 }

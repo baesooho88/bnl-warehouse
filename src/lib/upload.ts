@@ -8,7 +8,7 @@ import { importFiles, type ImportLine } from './importFiles'
  * 관리자 업로드: 오프라인이면 막고, 파일마다 클라우드에 저장한다. 업로드 알림은 보내지 않는다(2026-11-16 사용자 요청).
  */
 export async function uploadFiles(
-  files: { name: string; data: ArrayBuffer }[],
+  files: { name: string; data: ArrayBuffer; modified?: number }[],
   deps: {
     online: boolean; repo: Repository; now: Date; setFileName: (name: string) => void
     saveRi: (date: string, items: RiItem[]) => Promise<void>
@@ -18,6 +18,7 @@ export async function uploadFiles(
   if (!deps.online) return [{ level: 'error', text: '❌ 인터넷 연결이 필요해요' }]
 
   const lines: ImportLine[] = []
+  const sheets: typeof files = [] // 입출고 파일은 모아서 한 번에(같은 날짜 파일끼리 최신 우선·배차 빌려 붙이기)
   for (const f of files) {
     const name = f.name.normalize('NFC').replace(/\.xlsx?$/i, '')
     let stock: ReturnType<typeof parseStockWorkbook> = null
@@ -44,9 +45,9 @@ export async function uploadFiles(
       }
       continue
     }
-    deps.setFileName(f.name) // 업로드 기록에 남길 파일명
-    lines.push(...(await importFiles([f], deps.repo, deps.now)))
+    sheets.push(f)
   }
+  if (sheets.length) lines.push(...(await importFiles(sheets, deps.repo, deps.now, [], deps.setFileName)))
 
   return lines
 }

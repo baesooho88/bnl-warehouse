@@ -94,3 +94,23 @@ test('다음 날 파일을 올려도 전날 배차는 남는다(전날 시트엔
   expect(got.outbound.find((o) => o.baseDate === '2026-11-10')?.dispatch?.vehicles).toBe('5T×1')
   expect(got.outbound.find((o) => o.baseDate === '2026-11-11')?.dispatch?.vehicles).toBe('1T×1')
 })
+
+test('같은 날 출고 파일 둘: 최신 파일이 이기고, 배차 탭은 이전 편집본에서 빌려 붙인다', async () => {
+  const header = [null, '센터', '입하', 'BL No', '호선', 'PO', '품명', '수량', '중량', '용적', 'BOX NO', '도착지', '입문', 'MEMO', '검수', '신청자명', '도착', 'Location']
+  const row = (seq: number) => [seq, 'BNL', '', `BL${seq}`, '', '', '품목', '1/1', '100', '', '', '가', '09시', '', '', '', '', '']
+  const book = (name: string, seqs: number[], modified: number, dispatch?: string[]) => {
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['일일출하요청서'], [null, '11/16'], header, ...seqs.map(row)]), '11.16')
+    if (dispatch) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dispatch.map((l) => [l])), 'Sheet1')
+    return { ...file(name, new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' }))), modified }
+  }
+  const edited = book('11.16 출하요청서(편집).xlsx', [2, 3], 1000, ['당착', '2 : 5TON X1', '17일 도착', '3, 32 : 11TON X2'])
+  const fresh = book('11.16 출하요청서.xlsx', [2, 3, 32], 2000)
+  const repo = freshRepo()
+  const saved: string[] = []
+  const lines = await importFiles([fresh, edited], repo, now, [], (n) => saved.push(n)) // 고른 순서가 거꾸로여도
+  expect(saved).toEqual(['11.16 출하요청서(편집).xlsx', '11.16 출하요청서.xlsx'])
+  expect(lines.filter((l) => l.level !== 'ok')).toEqual([])
+  const got = (await repo.getRange('2026-11-16', '2026-11-16')).outbound
+  expect(got.map((o) => [o.seq, o.dispatch?.vehicles, o.dispatch?.arrive])).toEqual([[2, '5T×1', null], [3, '11T×2', '2026-11-17'], [32, '11T×2', '2026-11-17']])
+})
