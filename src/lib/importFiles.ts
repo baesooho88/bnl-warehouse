@@ -25,35 +25,42 @@ async function keepDispatch(repo: Repository, dates: string[], outbound: Outboun
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-/** 출고 파일의 가장 최근 날짜(배차가 붙는 날) */
-const lastOutDate = (p: ParseResult) => p.outbound.map((o) => o.baseDate).sort().at(-1)
+/** 배차 파일: 파일의 가장 최근 출고 날짜에 저장된 출고를 불러와 배차만 다시 붙여 저장한다 */
+async function applyDispatch(repo: Repository, name: string, parsed: ParseResult, sheet: { sheetName: string; lines: string[] }): Promise<ImportLine[]> {
+  const date = parsed.outbound.map((o) => o.baseDate).sort().at(-1)
+  try {
+    const stored = date ? (await repo.getRange(date, date)).outbound : []
+    if (!date || !stored.length) return [{ level: 'error', text: `❌ ${name}: 배차를 붙일 ${date ? formatMD(date) + ' ' : ''}출고가 없어요 — 출고표를 먼저 올려 주세요` }]
+    const d: ParseResult = { ...parsed, outbound: stored, sheets: [] }
+    attachDispatch(d, sheet.sheetName, sheet.lines)
+    await repo.replaceDays('출고', [date], [], stored)
+    const s = d.sheets[0]
+    return [
+      { level: 'ok', text: `✅ ${name}: 배차 ${formatMD(date)} 차량 ${s.count}건 연결(다른 탭은 무시)` },
+      ...(s.message ? [{ level: 'warn' as const, text: `⚠️ ${name} ${s.sheetName} 시트: ${s.message}` }] : []),
+    ]
+  } catch (e) {
+    return [{ level: 'error', text: `❌ ${name}: 저장하지 못했어요 (${errorText(e)})` }]
+  }
+}
 
 /**
  * 파일마다: 해석 → 종류별로 하루치 통째 교체 → 결과 메시지. 한 파일의 실패가 다른 파일을 막지 않는다.
- * 같이 고른 파일은 수정 시각 순으로 저장해 같은 날짜는 최신 파일이 이긴다. 최신 파일에 배차 탭이 없으면
- * 같은 날짜 배차 탭을 가진 다른 파일에서 빌려 붙인다(예: 새 출고표 + 배차 탭만 붙인 이전 편집본).
+ * 배차 탭이 있는 파일은 배차만 읽어 이미 저장된 출고에 붙인다(다른 탭은 이전 편집본일 수 있어 무시).
+ * 그래서 같이 고른 파일 중 배차 파일은 출고표 다음에 처리한다.
  */
 export async function importFiles(
-  files: { name: string; data: ArrayBuffer; modified?: number }[], repo: Repository, now: Date, updated: Updated[] = [],
+  files: { name: string; data: ArrayBuffer }[], repo: Repository, now: Date, updated: Updated[] = [],
   setFileName: (name: string) => void = () => {},
 ): Promise<ImportLine[]> {
   const lines: ImportLine[] = []
-  const all = [...files].sort((a, b) => (a.modified ?? 0) - (b.modified ?? 0)).map((f) => {
+  const all = files.map((f) => {
     try {
       return { f, parsed: parseWorkbook(new Uint8Array(f.data), f.name, now) as ParseResult | null, error: null }
     } catch (e) {
       return { f, parsed: null, error: e }
     }
-  })
-  for (const [i, { parsed }] of all.entries()) {
-    const date = parsed && lastOutDate(parsed)
-    if (!parsed || parsed.dispatchLines || !date) continue
-    // 같은 날짜 배차 탭: 이 파일보다 오래된 파일에서만 (더 최신 파일은 어차피 이 파일을 덮어쓴다)
-    const lender = all.slice(0, i).map((x) => x.parsed).findLast((p) => p?.dispatchLines && lastOutDate(p) === date)
-    if (!lender) continue
-    attachDispatch(parsed, lender.dispatchLines!.sheetName, lender.dispatchLines!.lines)
-    lender.sheets = lender.sheets.filter((s) => !(s.kind === null && s.baseDate === date)) // 덮어써질 파일의 배차 경고는 빼기
-  }
+  }).sort((a, b) => Number(!!a.parsed?.dispatchLines) - Number(!!b.parsed?.dispatchLines))
 
   for (const { f, parsed, error } of all) {
     const name = f.name.normalize('NFC').replace(/\.xlsx?$/i, '')
@@ -62,6 +69,10 @@ export async function importFiles(
       continue
     }
     setFileName(f.name) // 업로드 기록에 남길 파일명
+    if (parsed.dispatchLines) {
+      lines.push(...(await applyDispatch(repo, name, parsed, parsed.dispatchLines)))
+      continue
+    }
 
     const ok = parsed.sheets.filter((s) => s.status === 'ok')
     if (!ok.length && parsed.sheets.every((s) => s.message === '알 수 없는 양식')) {

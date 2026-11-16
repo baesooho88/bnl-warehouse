@@ -29,7 +29,7 @@ export function UploadScreen({ onDataChanged, dataVersion }: { onDataChanged: ()
     try {
       // 저장 공간이 부족해도 Chrome이 데이터를 지우지 않도록 요청 (거절돼도 계속 진행)
       await navigator.storage?.persist?.().catch(() => false)
-      const files = await Promise.all(picked.map(async (f) => ({ name: f.name, data: await f.arrayBuffer(), modified: f.lastModified })))
+      const files = await Promise.all(picked.map(async (f) => ({ name: f.name, data: await f.arrayBuffer() })))
       setLines(await uploadFiles(files, {
         online: navigator.onLine,
         repo,
