@@ -57,3 +57,29 @@ test('차량 없이 글만 쓴 순번 줄은 그 순번 배차 줄의 비고로 
   expect(bySeq.get(21)).toBe(bySeq.get(20))
   expect(problems).toEqual(['읽지 못한 줄: 9 : 아무 메모'])
 })
+
+test('2026-11-16 형식: TON·X 앞 띄어쓰기, 달 없는 도착일, 차량 사이·뒤 괄호 여러 개', () => {
+  const { bySeq, problems } = parseDispatch([
+    '당착',
+    '2,18 : 5TON X1',
+    '17일 도착',
+    '3 : 1TON X1 (광양-테스트B)',
+    '7,8 : TR X1 (W2550), 11TON X4',
+    '17 : 11TON X1 (인바)',
+    '19 : 25TON X6, 11TON X2 (체인)',
+    '20 : TR X1 (W3550)(앙카)',
+    '31 : 25 TON X1',
+  ], '2026-11-16')
+  expect(problems).toEqual([])
+  expect(bySeq.get(2)).toMatchObject({ arrive: null, vehicles: '5T×1' })
+  expect(bySeq.get(3)).toMatchObject({ arrive: '2026-11-17', vehicles: '1T×1', note: '광양-테스트B' })
+  expect(bySeq.get(8)).toMatchObject({ vehicles: 'TR×1 · 11T×4', note: 'W2550' })
+  expect(bySeq.get(17)).toMatchObject({ invar: true, note: null })
+  expect(bySeq.get(19)).toMatchObject({ vehicles: '25T×6 · 11T×2', note: null })
+  expect(bySeq.get(20)).toMatchObject({ vehicles: 'TR×1', note: 'W3550' })
+  expect(bySeq.get(31)?.vehicles).toBe('25T×1')
+})
+test('달 없는 도착일이 기준일보다 작으면 다음 달(해 넘김 포함)', () => {
+  expect(parseDispatch(['2일 도착', '1 : 1TX1'], '2026-11-30').bySeq.get(1)?.arrive).toBe('2026-12-02')
+  expect(parseDispatch(['2일 도착', '1 : 1TX1'], '2026-12-31').bySeq.get(1)?.arrive).toBe('2027-01-02')
+})

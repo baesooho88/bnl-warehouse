@@ -81,11 +81,11 @@ describe('새 양식(2026-11~)', () => {
 })
 
 describe('배차 시트', () => {
-  const book = (dispatchLines: string[]) => {
+  const book = (dispatchLines: string[], tab = '배차') => {
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, newFormatSheet([[1, '품목A', '가', '09시', '2026-11-11']]), '11.9')
     XLSX.utils.book_append_sheet(wb, newFormatSheet([[1, '품목A', '가', '09시', '2026-11-11'], [2, '품목B', '가', '10시', '2026-11-11'], [3, '품목C', '나', '11시', '2026-11-10']]), '11.10')
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dispatchLines.map((l) => [l])), '배차')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dispatchLines.map((l) => [l])), tab)
     return parseWorkbook(toBytes(wb), 'x.xlsx', now)
   }
   test('가장 최근 날짜 출고에만 붙이고, 배차에 없는 건은 당착·차량 없음', () => {
@@ -98,6 +98,10 @@ describe('배차 시트', () => {
   test('출고에 없는 순번·읽지 못한 줄은 메시지로', () => {
     const r = book(['당착', '1 : 1TX1', '9 : 5TX1', '???'])
     expect(r.sheets.at(-1)?.message).toBe('읽지 못한 줄: ???, 순번 9 출고에 없음')
+  })
+  test("탭 이름이 'Sheet1'이어도 첫 줄이 머리줄이면 배차표로 읽는다", () => {
+    expect(book(['17일 도착', '1 : 5TON X1'], 'Sheet1').sheets.at(-1)).toMatchObject({ sheetName: 'Sheet1', count: 1 })
+    expect(book(['176X127'], 'Sheet1').sheets.at(-1)).toMatchObject({ sheetName: 'Sheet1', status: 'skipped' })
   })
 })
 

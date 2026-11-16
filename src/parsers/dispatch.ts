@@ -1,12 +1,15 @@
 import type { Dispatch } from '../domain/types'
 
 const pad = (n: number) => String(n).padStart(2, '0')
-const MATERIALS = ['인바', '해양'] // 비고의 자재 이름: 인바만 INVAR로 표시, 나머지는 숨김
+const MATERIALS = ['인바', '해양', '체인', '앙카'] // 비고의 자재 이름: 인바만 INVAR로 표시, 나머지는 숨김
+/** 머리줄: '당착' · '11월 11일 도착' · '17일 도착'(달 없음 = 기준일 다음으로 오는 그 날) */
+export const DISPATCH_HEAD = /^(?:당착|(?:(\d{1,2})월\s*)?(\d{1,2})일)[^:]*$/
 
 /**
  * 출하요청서 파일의 '배차' 시트(한 칸에 한 줄)를 읽는다. 형식:
  *   당착 | 11월 11일 도착 [(인바)]      ← 머리줄: 아래 줄들의 도착일(당착 = null)
  *   1, 2 ~ 4 : 11TX1, 5TX1 (지역 - 업체 | 인바/09시)
+ *   7,8 : TR X1 (W2550), 11TON X4       ← 2026-11-16부터 담당자 형식: TON, X 앞 띄어쓰기, 차량 사이 괄호 여러 개
  *   21 : 오출고 합판 같이 상차              ← 차량 대신 글만 쓴 줄: 그 순번이 탄 배차 줄 비고에 붙인다
  * 같은 순번이 또 나오면 나중 줄이 이기고, 문제로 알려 준다.
  */
@@ -21,19 +24,21 @@ export function parseDispatch(lines: string[], baseDate: string): { bySeq: Map<n
   for (const raw of lines) {
     const text = raw.trim()
     if (!text) continue
-    const head = text.match(/^(?:당착|(\d{1,2})월\s*(\d{1,2})일)[^:]*$/)
+    const head = text.match(DISPATCH_HEAD)
     if (head) {
-      arrive = head[1] ? arriveDate(+head[1], +head[2], baseDate) : null
+      arrive = head[2] ? arriveDate(head[1] ? +head[1] : null, +head[2], baseDate) : null
       headerInvar = text.includes('인바')
       continue
     }
-    const m = text.match(/^([\d\s,~]+):\s*([^()]+?)\s*(?:\((.*)\))?$/)
+    const m = text.match(/^([\d\s,~]+):\s*(.+)$/)
     const seqs = m && seqList(m[1])
-    const vehicles = m && vehicleText(m[2])
-    if (seqs?.length && !vehicles) { memos.push({ seqs, text: m![2] + (m![3] ? ` (${m![3]})` : ''), raw: text }); continue }
+    // 괄호는 어디에 몇 개 있든 비고로, 나머지가 차량
+    const parens = m ? [...m[2].matchAll(/\(([^()]*)\)/g)].map((p) => p[1]) : []
+    const vehicles = m && vehicleText(m[2].replace(/\([^()]*\)/g, ''))
+    if (seqs?.length && !vehicles) { memos.push({ seqs, text: m![2].trim(), raw: text }); continue }
     if (!seqs?.length || !vehicles) { problems.push(`읽지 못한 줄: ${text}`); continue }
     line++
-    const parts = (m[3] ?? '').split('/').map((s) => s.trim()).filter(Boolean)
+    const parts = parens.flatMap((p) => p.split('/')).map((s) => s.trim()).filter(Boolean)
     const note = parts.filter((p) => !MATERIALS.includes(p)).join(' · ') || null
     const d: Dispatch = { line, arrive, vehicles, note, invar: headerInvar || parts.includes('인바') }
     for (const s of seqs) {
@@ -63,15 +68,16 @@ function seqList(s: string): number[] | null {
   return out
 }
 
-/** '8TX1, 5TX1' → '8T×1 · 5T×1', 'TRTX1'·'TRX4' → 'TR×1'·'TR×4', 'LBX2' → 'LB×2' (차종 뒤 T는 있을 때도 없을 때도 있다) */
+/** '8TX1, 5TX1' → '8T×1 · 5T×1', 'TRTX1'·'TR X4' → 'TR×1'·'TR×4', '25 TON X1' → '25T×1' (차종 뒤 T는 있을 때도 없을 때도 있다) */
 function vehicleText(s: string): string | null {
-  const out = s.split(',').map((p) => p.trim().toUpperCase().match(/^(?:(\d+(?:\.\d+)?)T|([A-Z]+?)T?)X(\d+)$/))
+  const out = s.split(',').map((p) => p.replace(/\s+/g, '').toUpperCase().replace(/TON/g, 'T').match(/^(?:(\d+(?:\.\d+)?)T|([A-Z]+?)T?)X(\d+)$/))
   if (out.some((v) => !v)) return null
   return out.map((v) => (v![1] ? `${v![1]}T×${v![3]}` : `${v![2]}×${v![3]}`)).join(' · ')
 }
 
-/** 기준일보다 반년 이상 앞선 달이면 다음 해로 본다(12월 배차 → 1월 도착) */
-function arriveDate(month: number, day: number, baseDate: string): string {
+/** 기준일보다 반년 이상 앞선 달이면 다음 해로 본다(12월 배차 → 1월 도착). 달이 없으면 기준일 뒤로 처음 오는 그 날. */
+function arriveDate(month: number | null, day: number, baseDate: string): string {
+  if (month === null) month = day < +baseDate.slice(8) ? +baseDate.slice(5, 7) % 12 + 1 : +baseDate.slice(5, 7)
   const baseYear = +baseDate.slice(0, 4)
   const year = month < +baseDate.slice(5, 7) - 6 ? baseYear + 1 : baseYear
   return `${year}-${pad(month)}-${pad(day)}`

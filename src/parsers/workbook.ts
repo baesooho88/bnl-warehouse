@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx'
 import type { ParseResult, Port } from '../domain/types'
-import { parseDispatch } from './dispatch'
+import { DISPATCH_HEAD, parseDispatch } from './dispatch'
 import { detectKind, findHeaderRow, sheetBaseDate, sheetToGrid } from './grid'
 import { parseInboundSheet } from './inbound'
 import { parseOutboundSheet } from './outbound'
@@ -17,9 +17,13 @@ export function parseWorkbook(data: ArrayBuffer | Uint8Array, fileName: string, 
     const baseDate = sheetBaseDate(sheetName, now)
     const skip = (message: string) => result.sheets.push({ kind, sheetName, baseDate, status: 'skipped', count: 0, message })
 
-    if (!kind && sheetName.includes('배차')) {
-      dispatch = { sheetName, lines: grid.map((row) => row.filter((v) => v !== null).join(' ')) }
-      continue
+    if (!kind) {
+      const lines = grid.map((row) => row.filter((v) => v !== null).join(' '))
+      // 탭 이름이 '배차'가 아니어도(예: 'Sheet1') 첫 줄이 '당착'·'17일 도착' 같은 머리줄이면 배차표
+      if (sheetName.includes('배차') || DISPATCH_HEAD.test(lines.find((l) => l.trim())?.trim() ?? '-')) {
+        dispatch = { sheetName, lines }
+        continue
+      }
     }
     if (!kind) { skip('알 수 없는 양식'); continue }
     if (!baseDate) { skip('시트 이름에서 날짜를 읽지 못함'); continue }
