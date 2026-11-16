@@ -37,10 +37,6 @@ export function UploadScreen({ onDataChanged, dataVersion }: { onDataChanged: ()
         setFileName: setCurrentFileName,
         saveRi: (date, items) => saveRi(supabase, date, items),
         saveStock: (date, items) => saveStock(supabase, date, items),
-        notify: async (summary) => {
-          const { error } = await supabase.functions.invoke('notify', { body: summary })
-          if (error) throw error
-        },
       }))
       onDataChanged()
     } catch (e) {
