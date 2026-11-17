@@ -7,14 +7,26 @@ import { importFiles, type ImportLine } from './importFiles'
 /**
  * 관리자 업로드: 오프라인이면 막고, 파일마다 클라우드에 저장한다. 업로드 알림은 보내지 않는다(2026-11-16 사용자 요청).
  */
-export async function uploadFiles(
-  files: { name: string; data: ArrayBuffer }[],
-  deps: {
-    online: boolean; repo: Repository; now: Date; setFileName: (name: string) => void
-    saveRi: (date: string, items: RiItem[]) => Promise<void>
-    saveStock: (date: string, items: StockItem[]) => Promise<void>
-  },
-): Promise<ImportLine[]> {
+export async function uploadFiles(files: UploadFile[], deps: UploadDeps): Promise<ImportLine[]> {
+  uploading.now = true
+  try {
+    return await run(files, deps)
+  } finally {
+    uploading.now = false
+  }
+}
+
+/** 업로드 중에는 새 버전 적용(새로 고침)을 미룬다 — src/main.tsx */
+export const uploading = { now: false }
+
+type UploadFile = { name: string; data: ArrayBuffer }
+type UploadDeps = {
+  online: boolean; repo: Repository; now: Date; setFileName: (name: string) => void
+  saveRi: (date: string, items: RiItem[]) => Promise<void>
+  saveStock: (date: string, items: StockItem[]) => Promise<void>
+}
+
+async function run(files: UploadFile[], deps: UploadDeps): Promise<ImportLine[]> {
   if (!deps.online) return [{ level: 'error', text: '❌ 인터넷 연결이 필요해요' }]
 
   const lines: ImportLine[] = []

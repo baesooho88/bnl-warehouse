@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import * as XLSX from 'xlsx'
 import { describe, expect, test, vi } from 'vitest'
-import { uploadFiles } from '../src/lib/upload'
+import { uploadFiles, uploading } from '../src/lib/upload'
 import { createCloudRepository } from '../src/storage/cloudRepository'
 import { createDexieRepository } from '../src/storage/dexieRepository'
 import { createFakeRemote } from './helpers/fakeRemote'
@@ -62,6 +62,17 @@ describe('uploadFiles', () => {
     expect(lines).toEqual([{ level: 'ok', text: '✅ RI 준비자재(2026.11.11): 11.11 RI 작업표 1건 반영' }])
     expect(saved).toHaveBeenCalledWith('2026-11-11', [expect.objectContaining({ bl: 'TESTBL0001', riLocation: '0-E' })])
     expect(remote.calls.replaceDays).toBe(0)
+  })
+
+
+  test('업로드 중 표시(새 버전 새로 고침을 미루는 데 씀): 도중엔 켜지고, 실패해도 끝나면 꺼진다', async () => {
+    const { repo, setFileName } = setup()
+    let during = false
+    await uploadFiles([file('신항.xlsx', 'sinhang')], { online: true, repo, now, setFileName: (x) => { during = uploading.now; setFileName(x) }, saveRi, saveStock })
+    expect(during).toBe(true)
+    expect(uploading.now).toBe(false)
+    await expect(uploadFiles([file('신항.xlsx', 'sinhang')], { online: true, repo, now, setFileName: () => { throw new Error('y') }, saveRi, saveStock })).rejects.toThrow()
+    expect(uploading.now).toBe(false)
   })
 
 })

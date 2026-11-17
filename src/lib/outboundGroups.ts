@@ -57,9 +57,9 @@ export function groupByDispatch(items: Outbound[]): DispatchSection[] {
     }))
 }
 
-/** [12,13,…,19,30] → '12~19, 30'. 배차표처럼 3개 이상 이어질 때만 범위로 쓴다. */
+/** [12,13,…,19,30] → '12~19, 30'. 배차표처럼 3개 이상 이어질 때만 범위로 쓴다. 한 순번에 B/L이 여러 건이라 같은 순번이 여러 번 온다. */
 export function seqLabel(seqs: number[]): string {
-  const s = [...seqs].sort((a, b) => a - b)
+  const s = [...new Set(seqs)].sort((a, b) => a - b)
   const out: string[] = []
   for (let i = 0; i < s.length; ) {
     let j = i

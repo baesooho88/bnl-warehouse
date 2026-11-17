@@ -72,6 +72,7 @@ test('seqLabel: 이어지는 순번은 범위로', () => {
   expect(seqLabel([12, 13, 14, 15, 16, 17, 18, 19, 30])).toBe('12~19, 30')
   expect(seqLabel([31, 20, 21])).toBe('20, 21, 31')
   expect(seqLabel([])).toBe('')
+  expect(seqLabel([5, 5, 6, 6, 7])).toBe('5~7') // 한 순번에 여러 건
 })
 
 import { vehicleChips } from '../src/lib/outboundGroups'
