@@ -38,17 +38,24 @@ export function ListScreen(props: {
   const inbound = data?.inbound ?? []
   const groups = useMemo(() => groupInbound(data?.inbound ?? []), [data])
 
-  // 알림의 컨테이너가 이 날짜에 있으면: B/L 한 건이면 상세로, 여러 건이면 그 묶음을 펼쳐 보여 준다. 없으면 데이터가 들어올 때 다시 본다.
+  // 알림의 컨테이너가 이 날짜에 있으면: 그 카드로 내려가 컨테이너를 반짝인다(묶음이면 펼쳐 B/L까지). 없으면 데이터가 들어올 때 다시 본다.
+  const [flash, setFlash] = useState<string | null>(null)
   useEffect(() => {
     if (!focusCntr) return
     const g = groups.find((xs) => xs.some((x) => x.containers.some((c) => c.no === focusCntr)))
     if (!g) return
     onFocused?.()
-    if (g.length === 1) return onOpenIn(g[0])
     setFilter('전체')
-    setOpen((s) => new Set(s).add(g[0].id))
-    requestAnimationFrame(() => document.getElementById(`in-${g[0].id}`)?.scrollIntoView({ block: 'start' }))
-  }, [focusCntr, groups, onFocused, onOpenIn])
+    if (g.length > 1) setOpen((s) => new Set(s).add(g[0].id))
+    setFlash(focusCntr)
+    requestAnimationFrame(() => document.getElementById(`in-${g[0].id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+  }, [focusCntr, groups, onFocused])
+  // 반짝임을 끝내 두어야 같은 컨테이너 알림이 또 와도 다시 반짝인다
+  useEffect(() => {
+    if (!flash) return
+    const t = setTimeout(() => setFlash(null), 4000)
+    return () => clearTimeout(t)
+  }, [flash])
   const { statuses } = useContainerStatuses(inbound.map((x) => x.bl))
   const outbound = data?.outbound ?? []
   const { done } = useInspections()
@@ -81,8 +88,8 @@ export function ListScreen(props: {
             ))}
           </div>
           {filter !== '출고' && groups.map((g) => (g.length === 1
-            ? <InboundCard key={g[0].id} item={g[0]} onOpen={onOpenIn} statuses={statuses} />
-            : <InboundGroupCard key={g[0].id} items={g} open={open.has(g[0].id)} onToggle={() => toggle(g[0].id)} onOpen={onOpenIn} statuses={statuses} />))}
+            ? <InboundCard key={g[0].id} item={g[0]} onOpen={onOpenIn} statuses={statuses} flash={flash} />
+            : <InboundGroupCard key={g[0].id} items={g} open={open.has(g[0].id)} onToggle={() => toggle(g[0].id)} onOpen={onOpenIn} statuses={statuses} flash={flash} />))}
           {filter !== '입고' && <OutboundGroups key={props.date} items={outbound} onOpen={props.onOpenOut} inspected={done} />}
         </>
       )}

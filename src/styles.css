@@ -319,6 +319,10 @@ body:has(.detail) { overflow: hidden; }
 .cntr { font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--muted); }
 .cntr.s-in { border-color: var(--in); background: var(--in-soft); color: var(--in); }
 .cntr.s-done { border-color: #1b8a3a; background: #e3f5e8; color: #1b6b35; }
+/* 알림으로 열면 그 컨테이너를 반짝인다 */
+.cntr.flash { animation: cntr-flash 0.6s ease-in-out 6; }
+@keyframes cntr-flash { 50% { box-shadow: 0 0 0 4px var(--urgent); transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .cntr.flash { animation: none; outline: 3px solid var(--urgent); } }
 @media (prefers-color-scheme: dark) { .cntr.s-done { background: #173322; color: #7fd99a; } }
 .containers select { min-height: 36px; font-size: 14px; }
 .og-time { color: var(--text); }

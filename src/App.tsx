@@ -35,7 +35,7 @@ export default function App() {
   const touch = useRef<{ x: number; y: number } | null>(null)
   const [date, setDate] = useState(() => dateParam() ?? todayIso(new Date()))
   const [detail, setDetail] = useState<Detail | null>(null)
-  const [focusCntr, setFocusCntr] = useState(() => (dateParam() ? cntrParam() : null)) // 알림으로 연 컨테이너: 그 B/L을 띄운다
+  const [focusCntr, setFocusCntr] = useState(() => (dateParam() ? cntrParam() : null)) // 알림으로 연 컨테이너: 입출고 화면에서 그 컨테이너를 반짝인다
   const [dataVersion, setDataVersion] = useState(0)
   const [status, setStatus] = useState<SyncStatus>(sync.status())
   const [pushOn, setPushOn] = useState<boolean | null>(null)
