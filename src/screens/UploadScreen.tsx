@@ -6,7 +6,6 @@ import { saveStock, stockSummary } from '../stock/stock'
 import { uploadFiles } from '../lib/upload'
 import { repo, setCurrentFileName } from '../repo'
 import { supabase } from '../storage/cloud/supabase'
-import { AdminPanel } from './AdminPanel'
 import type { Coverage } from '../storage/repository'
 import type { Kind } from '../domain/types'
 
@@ -82,7 +81,6 @@ export function UploadScreen({ onDataChanged, dataVersion }: { onDataChanged: ()
           <dd>{stock ? `${formatMD(stock.date)} 기준 (${stock.count}건)` : stock === null ? '없음' : '…'}</dd>
         </div>
       </dl>
-      <AdminPanel />
     </>
   )
 }

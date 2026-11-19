@@ -16,9 +16,13 @@
 
 ## 직원 PIN 변경
 
-관리자로 앱 로그인 › **올리기** 탭 › **직원 PIN 변경**. 바꾸면 직원 폰은 1시간 안에 로그아웃되고 알림 구독도 지워진다(새 PIN으로 다시 로그인 → 알림 다시 켜기).
+관리자로 앱 로그인 › **직원** 탭 › **직원 PIN 변경**. 바꾸면 직원 폰은 1시간 안에 로그아웃되고 알림 구독도 지워진다(새 PIN으로 다시 로그인 → 알림 다시 켜기).
 
-PIN 로그인이 15분 동안 20번 틀리면 모두 15분간 잠긴다. 기다리면 풀린다.
+PIN 로그인이 15분 동안 20번 틀리면 모두 15분간 잠긴다(개인 로그인 실패도 함께 센다). 기다리면 풀린다.
+
+## 직원 개인 계정·권한
+
+공용 PIN 직원은 보기만 한다. 컨테이너 상태 변경·휴가 달력 편집이 필요한 직원은 관리자가 **직원** 탭에서 개인 계정(이름·아이디·개인 PIN)을 만들고 권한을 켠다. 직원은 로그인 화면 › **개인 로그인**. 권한은 표(`staff_accounts`)에서 읽어 바로 적용되고, 개인 PIN을 바꾸면 그 폰은 로그아웃된다.
 
 ## 관리자 비밀번호 변경
 
@@ -48,7 +52,7 @@ Supabase › Authentication › Users › 관리자 › **Send password recovery
 ```bash
 npx supabase migration new <이름>     # supabase/migrations/ 에 SQL 작성
 npx supabase db push --remote
-npx supabase functions deploy staff-login set-staff-pin notify holidays --use-api --remote
+npx supabase functions deploy staff-login set-staff-pin staff-accounts notify holidays --use-api --remote
 ```
 
 ## 점검

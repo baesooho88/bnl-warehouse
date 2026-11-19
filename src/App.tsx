@@ -15,7 +15,9 @@ import { ListScreen } from './screens/ListScreen'
 import { RiScreen } from './screens/RiScreen'
 import { LoginScreen } from './screens/LoginScreen'
 import { SearchScreen } from './screens/SearchScreen'
+import { StaffScreen } from './screens/StaffScreen'
 import { StatsScreen } from './screens/StatsScreen'
+import { fetchAccounts, type StaffAccount } from './staff/staff'
 import { UploadScreen } from './screens/UploadScreen'
 import { cloudConfigured, supabase } from './storage/cloud/supabase'
 import type { SyncStatus } from './sync/sync'
@@ -39,6 +41,7 @@ export default function App() {
   const [dataVersion, setDataVersion] = useState(0)
   const [status, setStatus] = useState<SyncStatus>(sync.status())
   const [pushOn, setPushOn] = useState<boolean | null>(null)
+  const [me, setMe] = useState<StaffAccount | null>(null) // 직원 개인 계정이면 이름·권한(공용 PIN이면 null)
   const [permission, setPermission] = useState(() => (pushSupported() ? Notification.permission : 'denied'))
   const fixedDate = useRef(dateParam() !== null) // 알림으로 열었으면 그 날짜를 유지
 
@@ -57,6 +60,7 @@ export default function App() {
     await sync.reset() // 진행 중 동기화가 지운 뒤에 옛 위치를 되살리지 않게 (clearAll 바로 앞)
     await local.clearAll()
     setDetail(null)
+    setMe(null)
     setTabState('입출고')
     setDataVersion((v) => v + 1)
   }, [])
@@ -80,7 +84,10 @@ export default function App() {
         void jumpToLatest()
       }
     })
-    const run = () => { void sync.syncOnce() }
+    // 권한은 관리자가 바꾸면 바로 적용되게 화면에 돌아올 때마다 다시 읽는다(서버도 같은 표로 막는다)
+    const loadMe = () => { if (role === 'staff') void fetchAccounts(supabase).then((l) => setMe(l[0] ?? null)).catch(() => {}) }
+    loadMe()
+    const run = () => { loadMe(); void sync.syncOnce() }
     const onVisible = () => { if (document.visibilityState === 'visible') run() }
     run()
     const offLog = remote.onNewLog(run)
@@ -144,7 +151,8 @@ export default function App() {
   if (session === undefined) return <main className="empty">불러오는 중…</main>
   if (!session || !role) return <LoginScreen />
 
-  const tabs: Tab[] = role === 'admin' ? ['입출고', 'RI', '통계', '달력', '검색', '올리기'] : ['입출고', 'RI', '통계', '달력', '검색']
+  const tabs: Tab[] = role === 'admin' ? ['입출고', 'RI', '통계', '달력', '검색', '올리기', '직원'] : ['입출고', 'RI', '통계', '달력', '검색']
+  const can = (p: 'container' | 'calendar') => role === 'admin' || !!me?.perms.includes(p)
   const current = tabs.includes(tab) ? tab : '입출고'
   const goTab = (t: Tab) => {
     if (t === current) return
@@ -167,7 +175,7 @@ export default function App() {
     <div className="app">
       <StatusBar status={status} onRetry={() => void sync.syncOnce()} pushOn={pushSupported() ? pushOn : null}
         onTogglePush={() => void togglePush()} onLogout={() => void logout(supabase, cleanup)}
-        roleLabel={role === 'admin' ? '관리자로 로그인됨' : '직원으로 로그인됨'} />
+        roleLabel={role === 'admin' ? '관리자로 로그인됨' : me ? `${me.name}(${me.login_id})으로 로그인됨` : '직원으로 로그인됨'} />
       <div key={current} className={`tab-page ${slide}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {current === '입출고' && permission === 'default' && pushOn === false && VAPID_KEY && <PushCard onEnable={() => void enablePush()} />}
       {current === '입출고' && (
@@ -178,10 +186,11 @@ export default function App() {
       {current === 'RI' && <RiScreen />}
       {current === '검색' && <SearchScreen />}
       {current === '통계' && <StatsScreen dataVersion={dataVersion} />}
-      {current === '달력' && <CalendarScreen canEdit={role === 'admin'} />}
+      {current === '달력' && <CalendarScreen canEdit={can('calendar')} />}
       {current === '올리기' && role === 'admin' && <UploadScreen onDataChanged={dataChanged} dataVersion={dataVersion} />}
+      {current === '직원' && role === 'admin' && <StaffScreen />}
       </div>
-      {detail && <DetailScreen detail={detail} onBack={closeDetail} canEdit={role === 'admin'} />}
+      {detail && <DetailScreen detail={detail} onBack={closeDetail} canEdit={can('container')} />}
       <TabBar tabs={tabs} tab={current} onChange={goTab} />
     </div>
   )

@@ -1,4 +1,4 @@
-// 알림 발송 (스펙 v2 7장). 관리자만 호출 가능.
+// 알림 발송 (스펙 v2 7장). 관리자와 컨테이너 권한을 받은 직원만 호출 가능.
 import webpush from 'npm:web-push@3.6.7'
 import { env, requireMember, serviceClient } from '../_shared/admin.ts'
 import { json, preflight } from '../_shared/http.ts'
@@ -13,7 +13,11 @@ Deno.serve(async (req) => {
   let message
   try {
     const body = await req.json()
-    if (who.role !== 'admin') return json({ error: 'forbidden' }, 403)
+    if (who.role !== 'admin') {
+      // 컨테이너 권한을 받은 직원 개인 계정도 반입 알림을 보낸다
+      const { data } = await serviceClient().from('staff_accounts').select('perms').eq('user_id', who.userId).maybeSingle()
+      if (!(data?.perms as string[] | undefined)?.includes('container')) return json({ error: 'forbidden' }, 403)
+    }
     message = buildMessage(body)
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'bad request' }, 400)

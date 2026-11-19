@@ -40,6 +40,11 @@ describe('staffLogin', () => {
     expect(await staffLogin(f.client, '123456')).toEqual({ ok: true })
     expect(f.setSession).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'r' })
   })
+  test('개인 계정은 아이디(소문자)를 함께 보낸다', async () => {
+    const f = fakeClient(async () => ({ data: { access_token: 'a', refresh_token: 'r' }, error: null }))
+    await staffLogin(f.client, '123456', ' Hong ')
+    expect((f.client as { functions: { invoke: ReturnType<typeof vi.fn> } }).functions.invoke).toHaveBeenCalledWith('staff-login', { body: { pin: '123456', id: 'hong' } })
+  })
   test('401 → invalid, 423 → locked, 그 외 → network', async () => {
     const err = (status?: number) => fakeClient(async () => ({ data: null, error: { context: status ? { status } : undefined, message: 'x' } }))
     expect(await staffLogin(err(401).client, '123456')).toEqual({ ok: false, reason: 'invalid' })
