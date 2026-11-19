@@ -1,12 +1,12 @@
 // 원격 Supabase 프로젝트의 권한·PIN·업로드·실시간·알림 권한을 실제로 확인한다.
-// 사용: ADMIN_EMAIL=… ADMIN_PASSWORD=… STAFF_PIN=… node --env-file=.env.local scripts/verify-cloud.mjs
-// 비밀 값은 출력하지 않는다. 테스트 행은 2099-01-01(신항)에만 쓰고 끝에 지운다.
+// 사용: ADMIN_EMAIL=… ADMIN_PASSWORD=… STAFF_ID=… STAFF_PIN=… node --env-file=.env.local scripts/verify-cloud.mjs
+// STAFF_ID는 권한을 하나도 켜지 않은 직원 계정. 비밀 값은 출력하지 않는다. 테스트 행은 2099-01-01(신항)에만 쓰고 끝에 지운다.
 // 잠금(20회 실패)은 실제 직원을 15분 막으므로 여기서 하지 않는다(tests/pin.test.ts).
 import { createClient } from '@supabase/supabase-js'
 
-const { VITE_SUPABASE_URL: url, VITE_SUPABASE_ANON_KEY: key, ADMIN_EMAIL, ADMIN_PASSWORD, STAFF_PIN } = process.env
-if (!url || !key || !ADMIN_EMAIL || !ADMIN_PASSWORD || !STAFF_PIN) {
-  console.error('필요: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY(.env.local), ADMIN_EMAIL, ADMIN_PASSWORD, STAFF_PIN')
+const { VITE_SUPABASE_URL: url, VITE_SUPABASE_ANON_KEY: key, ADMIN_EMAIL, ADMIN_PASSWORD, STAFF_ID, STAFF_PIN } = process.env
+if (!url || !key || !ADMIN_EMAIL || !ADMIN_PASSWORD || !STAFF_ID || !STAFF_PIN) {
+  console.error('필요: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY(.env.local), ADMIN_EMAIL, ADMIN_PASSWORD, STAFF_ID, STAFF_PIN')
   process.exit(2)
 }
 
@@ -30,8 +30,8 @@ for (const t of ['inbound', 'outbound', 'upload_log', 'vacations', 'container_st
 
 // 2. PIN
 const wrong = String((Number(STAFF_PIN) + 1) % 1_000_000).padStart(6, '0')
-check((await callFn('staff-login', { pin: wrong })).status === 401, '틀린 PIN → 401')
-const res = await callFn('staff-login', { pin: STAFF_PIN })
+check((await callFn('staff-login', { id: STAFF_ID, pin: wrong })).status === 401, '틀린 PIN → 401')
+const res = await callFn('staff-login', { id: STAFF_ID, pin: STAFF_PIN })
 const staff = client()
 if (res.status === 200) await staff.auth.setSession(await res.json())
 const staffSession = (await staff.auth.getSession()).data.session
@@ -71,7 +71,9 @@ try {
   await staff.from('inbound').delete().eq('base_date', TEST_DATE)
   check((await countTest(admin)) === 2, '직원 inbound 삭제 무효')
   check(!!(await replace(staff, [])).error, '직원 replace_days 거부')
-  check(((await staff.from('staff_pin').select('*')).data ?? []).length === 0, '직원 staff_pin 읽기 0행')
+  check(((await staff.from('staff_account_pins').select('*')).data ?? []).length === 0, '직원 PIN 해시 읽기 0행')
+  check(((await staff.from('staff_accounts').select('user_id')).data ?? []).length === 1, '직원은 본인 계정 한 줄만 읽음')
+  check(((await staff.from('staff_accounts').update({ perms: ['container'] }).eq('login_id', STAFF_ID).select()).data ?? []).length === 0, '직원이 스스로 권한을 켤 수 없음')
 
   // 6. 알림은 관리자만
   check((await callFn('notify', { date: TEST_DATE, inbound: 0, outbound: 0, sameDay: 0 }, staffSession?.access_token)).status === 403, '직원이 notify 호출 → 403')
@@ -103,9 +105,9 @@ try {
   check(!!(await staff.rpc('replace_ri', { base_date: TEST_DATE, rows: [] })).error, '직원 RI 작업표 올리기 거부')
   check((await staff.from('ri_items').select('bl').eq('base_date', TEST_DATE)).data?.length === 1, '직원은 RI 작업표를 읽을 수 있음')
 
-  // 7. 직원 세션으로 공용 계정 비밀번호를 바꿔도 PIN 로그인이 살아남는다(서버가 되돌림)
+  // 7. 직원 세션으로 계정 비밀번호를 바꿔도 PIN 로그인은 그대로(비밀번호를 쓰지 않음)
   const sabotage = await staff.auth.updateUser({ password: crypto.randomUUID() })
-  check((await callFn('staff-login', { pin: STAFF_PIN })).status === 200, `직원이 계정 비밀번호를 바꿔도(${sabotage.error ? '변경 거부됨' : '변경됨'}) PIN 로그인 유지`)
+  check((await callFn('staff-login', { id: STAFF_ID, pin: STAFF_PIN })).status === 200, `직원이 계정 비밀번호를 바꿔도(${sabotage.error ? '변경 거부됨' : '변경됨'}) PIN 로그인 유지`)
 } finally {
   const clean = await replace(admin, [])
   check(!clean.error && (await countTest(admin)) === 0, `테스트 날짜(${TEST_DATE}) 정리`)

@@ -12,11 +12,11 @@ export const isValidPin = (pin: string) => /^\d{6}$/.test(pin)
 
 type StaffLoginResult = { ok: true } | { ok: false; reason: 'invalid' | 'locked' | 'network' }
 
-/** 직원 PIN 로그인: 서버 함수가 PIN·잠금을 확인하고 직원 계정 세션을 돌려준다. id가 있으면 개인 계정(아이디 + 개인 PIN). */
-export async function staffLogin(client: SupabaseClient, pin: string, id?: string): Promise<StaffLoginResult> {
-  if (!isValidPin(pin)) return { ok: false, reason: 'invalid' }
+/** 직원 개인 로그인(아이디 + 개인 PIN): 서버 함수가 PIN·잠금을 확인하고 그 직원 세션을 돌려준다. */
+export async function staffLogin(client: SupabaseClient, pin: string, id: string): Promise<StaffLoginResult> {
+  if (!isValidPin(pin) || !id.trim()) return { ok: false, reason: 'invalid' }
   try {
-    const { data, error } = await client.functions.invoke('staff-login', { body: id ? { pin, id: id.trim().toLowerCase() } : { pin } })
+    const { data, error } = await client.functions.invoke('staff-login', { body: { pin, id: id.trim().toLowerCase() } })
     if (error) {
       const status = (error as { context?: { status?: number } }).context?.status
       return { ok: false, reason: status === 401 ? 'invalid' : status === 423 ? 'locked' : 'network' }

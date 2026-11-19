@@ -41,7 +41,7 @@ export default function App() {
   const [dataVersion, setDataVersion] = useState(0)
   const [status, setStatus] = useState<SyncStatus>(sync.status())
   const [pushOn, setPushOn] = useState<boolean | null>(null)
-  const [me, setMe] = useState<StaffAccount | null>(null) // 직원 개인 계정이면 이름·권한(공용 PIN이면 null)
+  const [me, setMe] = useState<StaffAccount | null>(null) // 직원 계정의 이름·권한
   const [permission, setPermission] = useState(() => (pushSupported() ? Notification.permission : 'denied'))
   const fixedDate = useRef(dateParam() !== null) // 알림으로 열었으면 그 날짜를 유지
 

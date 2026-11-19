@@ -7,7 +7,7 @@ const STAFF_ID_KEY = 'bnl-staff-id' // 이 기기에 저장한 직원 개인 아
 const saved = (k: string) => { try { return localStorage.getItem(k) ?? '' } catch { return '' } }
 
 export function LoginScreen() {
-  const [mode, setMode] = useState<'staff' | 'personal' | 'admin'>(() => (saved(STAFF_ID_KEY) ? 'personal' : 'staff'))
+  const [mode, setMode] = useState<'staff' | 'admin'>('staff')
   const [staffId, setStaffId] = useState(() => saved(STAFF_ID_KEY))
   const [pin, setPin] = useState('')
   const [email, setEmail] = useState(() => saved(ID_KEY))
@@ -20,11 +20,11 @@ export function LoginScreen() {
     setBusy(true)
     setMessage('')
     if (mode !== 'admin') {
-      const r = await staffLogin(supabase, pin, mode === 'personal' ? staffId : undefined)
+      const r = await staffLogin(supabase, pin, staffId)
       if (!r.ok) {
-        setMessage(r.reason === 'invalid' ? (mode === 'personal' ? '아이디 또는 PIN이 맞지 않아요' : 'PIN이 맞지 않아요') : r.reason === 'locked' ? '잠시 후 다시 시도해 주세요 (약 15분)' : '연결할 수 없어요. 인터넷을 확인해 주세요')
+        setMessage(r.reason === 'invalid' ? '아이디 또는 PIN이 맞지 않아요' : r.reason === 'locked' ? '잠시 후 다시 시도해 주세요 (약 15분)' : '연결할 수 없어요. 인터넷을 확인해 주세요')
         setPin('')
-      } else try { localStorage.setItem(STAFF_ID_KEY, mode === 'personal' ? staffId.trim() : '') } catch { /* 저장 못 해도 로그인은 됨 */ }
+      } else try { localStorage.setItem(STAFF_ID_KEY, staffId.trim()) } catch { /* 저장 못 해도 로그인은 됨 */ }
     } else {
       const r = await adminLogin(supabase, adminEmail(email), password)
       if (!r.ok) setMessage('아이디 또는 비밀번호가 맞지 않아요')
@@ -40,11 +40,11 @@ export function LoginScreen() {
       <form onSubmit={submit}>
         {mode !== 'admin' ? (
           <>
-          {mode === 'personal' && <label>아이디<input autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" value={staffId} onChange={(e) => setStaffId(e.target.value)} autoFocus={!staffId} /></label>}
+          <label>아이디<input autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" value={staffId} onChange={(e) => setStaffId(e.target.value)} autoFocus={!staffId} /></label>
           <label>
-            {mode === 'personal' ? '개인 PIN (6자리)' : '회사 PIN (6자리)'}
+            개인 PIN (6자리)
             <input type="password" inputMode="numeric" autoComplete="current-password" maxLength={6} pattern="\d{6}"
-              value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} autoFocus={mode === 'staff' || !!staffId} />
+              value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} autoFocus={!!staffId} />
           </label>
           </>
         ) : (
@@ -54,15 +54,13 @@ export function LoginScreen() {
           </>
         )}
         {message && <p className="login-error" role="alert">{message}</p>}
-        <button className="btn primary wide" disabled={busy || (mode === 'admin' ? !email || !password : !isValidPin(pin) || (mode === 'personal' && !staffId.trim()))}>
+        <button className="btn primary wide" disabled={busy || (mode === 'admin' ? !email || !password : !isValidPin(pin) || !staffId.trim())}>
           {busy ? '확인 중…' : '로그인'}
         </button>
       </form>
-      {(['staff', 'personal', 'admin'] as const).filter((m) => m !== mode).map((m) => (
-        <button key={m} className="link" onClick={() => { setMode(m); setPin(''); setMessage('') }}>
-          {{ staff: '회사 PIN 로그인', personal: '개인 로그인', admin: '관리자 로그인' }[m]} ›
-        </button>
-      ))}
+      <button className="link" onClick={() => { setMode(mode === 'staff' ? 'admin' : 'staff'); setPin(''); setMessage('') }}>
+        {mode === 'staff' ? '관리자 로그인 ›' : '‹ 직원 로그인'}
+      </button>
     </main>
   )
 }

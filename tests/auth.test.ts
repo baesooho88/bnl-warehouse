@@ -37,23 +37,24 @@ const fakeClient = (invoke: () => Promise<unknown>) => {
 describe('staffLogin', () => {
   test('성공하면 받은 세션을 저장', async () => {
     const f = fakeClient(async () => ({ data: { access_token: 'a', refresh_token: 'r' }, error: null }))
-    expect(await staffLogin(f.client, '123456')).toEqual({ ok: true })
+    expect(await staffLogin(f.client, '123456', 'hong')).toEqual({ ok: true })
     expect(f.setSession).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'r' })
   })
-  test('개인 계정은 아이디(소문자)를 함께 보낸다', async () => {
+  test('아이디(소문자)를 함께 보낸다', async () => {
     const f = fakeClient(async () => ({ data: { access_token: 'a', refresh_token: 'r' }, error: null }))
     await staffLogin(f.client, '123456', ' Hong ')
     expect((f.client as { functions: { invoke: ReturnType<typeof vi.fn> } }).functions.invoke).toHaveBeenCalledWith('staff-login', { body: { pin: '123456', id: 'hong' } })
   })
   test('401 → invalid, 423 → locked, 그 외 → network', async () => {
     const err = (status?: number) => fakeClient(async () => ({ data: null, error: { context: status ? { status } : undefined, message: 'x' } }))
-    expect(await staffLogin(err(401).client, '123456')).toEqual({ ok: false, reason: 'invalid' })
-    expect(await staffLogin(err(423).client, '123456')).toEqual({ ok: false, reason: 'locked' })
-    expect(await staffLogin(err().client, '123456')).toEqual({ ok: false, reason: 'network' })
+    expect(await staffLogin(err(401).client, '123456', 'hong')).toEqual({ ok: false, reason: 'invalid' })
+    expect(await staffLogin(err(423).client, '123456', 'hong')).toEqual({ ok: false, reason: 'locked' })
+    expect(await staffLogin(err().client, '123456', 'hong')).toEqual({ ok: false, reason: 'network' })
   })
-  test('형식이 틀린 PIN은 서버에 보내지 않는다', async () => {
+  test('형식이 틀린 PIN·빈 아이디는 서버에 보내지 않는다', async () => {
     const f = fakeClient(async () => ({ data: null, error: null }))
-    expect(await staffLogin(f.client, '12a')).toEqual({ ok: false, reason: 'invalid' })
+    expect(await staffLogin(f.client, '12a', 'hong')).toEqual({ ok: false, reason: 'invalid' })
+    expect(await staffLogin(f.client, '123456', ' ')).toEqual({ ok: false, reason: 'invalid' })
     expect((f.client as { functions: { invoke: ReturnType<typeof vi.fn> } }).functions.invoke).not.toHaveBeenCalled()
   })
 })

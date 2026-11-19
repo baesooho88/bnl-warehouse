@@ -2,11 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { isValidPin } from '../auth/auth'
 import { accountAction, ALL_PERMS, fetchAccounts, PERM_LABELS, setPerms, type Perm, type StaffAccount } from '../staff/staff'
 import { supabase } from '../storage/cloud/supabase'
-import { AdminPanel } from './AdminPanel'
 
 const digits = (v: string) => v.replace(/\D/g, '').slice(0, 6)
 
-/** 관리자 전용: 직원 개인 계정과 권한. 공용 PIN 직원은 보기만 한다. */
+/** 관리자 전용: 직원 계정과 권한. 권한이 없는 계정은 보기만 한다. */
 export function StaffScreen() {
   const [list, setList] = useState<StaffAccount[] | null>(null)
   const [message, setMessage] = useState('')
@@ -30,10 +29,10 @@ export function StaffScreen() {
   return (
     <>
       <h1 className="screen-title">직원관리</h1>
-      <p className="hint">공용 PIN으로 들어온 직원은 보기만 해요. 권한이 필요한 직원은 개인 계정을 만들어 주세요. 직원은 로그인 화면의 '개인 로그인'에서 아이디와 개인 PIN으로 들어와요.</p>
+      <p className="hint">직원마다 계정을 만들어 주세요. 직원은 로그인 화면에서 아이디와 개인 PIN으로 들어와요. 권한을 켜지 않은 직원은 보기만 해요.</p>
       {message && <p className="hint" role="status">{message}</p>}
 
-      {list?.length === 0 && <p className="empty">아직 개인 계정이 없어요</p>}
+      {list?.length === 0 && <p className="empty">아직 직원 계정이 없어요</p>}
       {list?.map((a) => (
         <div key={a.user_id} className="card staff-card">
           <div className="top"><b>{a.name}</b><span>아이디 {a.login_id}</span></div>
@@ -60,7 +59,7 @@ export function StaffScreen() {
         </div>
       ))}
 
-      <h2 className="section-title">개인 계정 추가</h2>
+      <h2 className="section-title">직원 계정 추가</h2>
       <form className="staff-form" onSubmit={(e) => {
         e.preventDefault()
         const f = form
@@ -79,7 +78,6 @@ export function StaffScreen() {
         <button className="btn primary" disabled={busy || !form.name.trim() || form.loginId.length < 2 || !isValidPin(form.pin)}>계정 만들기</button>
       </form>
 
-      <AdminPanel />
     </>
   )
 }

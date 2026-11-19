@@ -1,6 +1,6 @@
 # 운영 절차 (v2 클라우드)
 
-비밀 값(관리자 비밀번호, 직원 PIN, 직원 계정 비밀번호, VAPID 비밀 키, service role 키)은 이 문서·저장소·채팅에 쓰지 않는다.
+비밀 값(관리자 비밀번호, 직원 PIN, VAPID 비밀 키, service role 키)은 이 문서·저장소·채팅에 쓰지 않는다.
 명령은 저장소 폴더에서 **터미널 앱**으로 실행한다. 프로젝트는 `npx supabase link`로 연결되어 있어야 한다.
 
 ## 구성
@@ -8,36 +8,21 @@
 | 항목 | 위치 |
 |---|---|
 | 앱 공개 설정 (URL, publishable 키, VAPID 공개 키) | `.env.local`(git 제외), GitHub Actions Variables `VITE_*` |
-| 계정 | Supabase › Authentication › Users — 관리자 1명(`role=admin`), 직원 공용 1개(`role=staff`) |
+| 계정 | Supabase › Authentication › Users — 관리자 1명(`role=admin`), 직원 개인 계정(`role=staff`, 직원 탭에서 만듦) |
 | 역할 | `auth.users.raw_app_meta_data.role` (사용자가 바꿀 수 없음) |
-| 서버 비밀 값 | `npx supabase secrets list --remote` — `STAFF_EMAIL`, `STAFF_PASSWORD`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` |
+| 서버 비밀 값 | `npx supabase secrets list --remote` — `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` |
 | DB 구조 | `supabase/migrations/` |
-| 서버 함수 | `supabase/functions/` — `staff-login`(로그인 전 호출, JWT 검사 끔), `set-staff-pin`, `notify`, `holidays`(구글 공휴일 캘린더 중계) |
+| 서버 함수 | `supabase/functions/` — `staff-login`(로그인 전 호출, JWT 검사 끔), `staff-accounts`(직원 계정), `notify`, `holidays`(구글 공휴일 캘린더 중계) |
 
-## 직원 PIN 변경
+## 직원 계정·권한
 
-관리자로 앱 로그인 › **직원** 탭 › **직원 PIN 변경**. 바꾸면 직원 폰은 1시간 안에 로그아웃되고 알림 구독도 지워진다(새 PIN으로 다시 로그인 → 알림 다시 켜기).
+관리자로 앱 로그인 › **직원** 탭에서 직원마다 계정(이름·아이디·개인 PIN)을 만들고 권한(컨테이너 상태 변경·휴가 달력 편집)을 켠다. 권한이 없으면 보기만 한다. 권한은 표(`staff_accounts`)에서 읽어 바로 적용된다. 개인 PIN을 바꾸면 그 폰은 1시간 안에 로그아웃되고, 계정을 지우면 알림 구독도 함께 지워진다. 계정 비밀번호는 아무도 모르는 난수라 로그인은 `staff-login`으로만 된다.
 
-PIN 로그인이 15분 동안 20번 틀리면 모두 15분간 잠긴다(개인 로그인 실패도 함께 센다). 기다리면 풀린다.
-
-## 직원 개인 계정·권한
-
-공용 PIN 직원은 보기만 한다. 컨테이너 상태 변경·휴가 달력 편집이 필요한 직원은 관리자가 **직원** 탭에서 개인 계정(이름·아이디·개인 PIN)을 만들고 권한을 켠다. 직원은 로그인 화면 › **개인 로그인**. 권한은 표(`staff_accounts`)에서 읽어 바로 적용되고, 개인 PIN을 바꾸면 그 폰은 로그아웃된다.
+로그인이 15분 동안 20번 틀리면 모두 15분간 잠긴다. 기다리면 풀린다.
 
 ## 관리자 비밀번호 변경
 
 Supabase › Authentication › Users › 관리자 › **Send password recovery**, 또는 같은 화면에서 직접 변경.
-
-## 직원 계정 비밀번호 교체
-
-직원은 이 비밀번호를 모른다(서버 함수만 사용). 유출이 의심될 때만 바꾼다. 새 값을 계정과 `STAFF_PASSWORD` 비밀 값 **둘 다**에 넣어야 하며, 둘이 다르면 PIN 로그인이 전부 실패한다.
-
-1. 새 비밀번호를 git 제외 임시 파일에 만든다: `openssl rand -base64 36 | tr -d '\n/+=' > .staff-password.local`
-2. 계정에 적용: Supabase › Authentication › Users › 직원 계정에서 비밀번호 변경(파일 내용을 `pbcopy < .staff-password.local`로 복사해 붙여 넣기)
-3. 서버에 적용: `npx supabase secrets set --remote STAFF_PASSWORD="$(cat .staff-password.local)"`
-4. `rm .staff-password.local`
-
-직원 계정 이메일을 바꾸면 `STAFF_EMAIL` 비밀 값도 같은 값으로 바꾼다.
 
 ## 알림(VAPID) 키 교체
 
@@ -52,7 +37,7 @@ Supabase › Authentication › Users › 관리자 › **Send password recovery
 ```bash
 npx supabase migration new <이름>     # supabase/migrations/ 에 SQL 작성
 npx supabase db push --remote
-npx supabase functions deploy staff-login set-staff-pin staff-accounts notify holidays --use-api --remote
+npx supabase functions deploy staff-login staff-accounts notify holidays --use-api --remote
 ```
 
 ## 점검
