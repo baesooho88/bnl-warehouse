@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isValidPin } from '../auth/auth'
-import { accountAction, ALL_PERMS, fetchAccounts, PERM_LABELS, setPerms, type Perm, type StaffAccount } from '../staff/staff'
+import { accountAction, ALL_PERMS, fetchAccounts, HIDEABLE_TABS, PERM_LABELS, updateAccount, type Perm, type StaffAccount } from '../staff/staff'
 import { supabase } from '../storage/cloud/supabase'
 
 const digits = (v: string) => v.replace(/\D/g, '').slice(0, 6)
@@ -24,7 +24,7 @@ export function StaffScreen() {
     setBusy(false)
     load()
   }
-  const toggle = (ps: Perm[], p: Perm) => (ps.includes(p) ? ps.filter((x) => x !== p) : [...ps, p])
+  const toggle = <T,>(ps: T[], p: T) => (ps.includes(p) ? ps.filter((x) => x !== p) : [...ps, p])
 
   return (
     <>
@@ -39,10 +39,18 @@ export function StaffScreen() {
           {ALL_PERMS.map((p) => (
             <label key={p} className="staff-perm">
               <input type="checkbox" checked={a.perms.includes(p)} disabled={busy}
-                onChange={() => void run(() => setPerms(supabase, a.user_id, toggle(a.perms, p)), `${a.name}: ${PERM_LABELS[p]} ${a.perms.includes(p) ? '끔' : '켬'}`)} />
+                onChange={() => void run(() => updateAccount(supabase, a.user_id, { perms: toggle(a.perms, p) }), `${a.name}: ${PERM_LABELS[p]} ${a.perms.includes(p) ? '끔' : '켬'}`)} />
               {PERM_LABELS[p]}
             </label>
           ))}
+          <div className="staff-tabs" role="group" aria-label={`${a.name}에게 보이는 탭`}>
+            <span>보이는 탭</span>
+            <button className="chip" aria-pressed disabled>입출고</button>
+            {HIDEABLE_TABS.map((t) => (
+              <button key={t} className="chip" aria-pressed={!a.hidden_tabs.includes(t)} disabled={busy}
+                onClick={() => void run(() => updateAccount(supabase, a.user_id, { hidden_tabs: toggle(a.hidden_tabs, t) }), `${a.name}: ${t} 탭 ${a.hidden_tabs.includes(t) ? '보임' : '숨김'}`)}>{t}</button>
+            ))}
+          </div>
           {pinFor?.id === a.user_id ? (
             <form className="pin-form" onSubmit={(e) => { e.preventDefault(); const pin = pinFor.pin; setPinFor(null); void run(() => accountAction(supabase, { action: 'reset-pin', userId: a.user_id, pin }), `${a.name}의 PIN을 바꿨어요. 그 폰은 다시 로그인해야 해요`) }}>
               <input type="password" inputMode="numeric" placeholder="새 개인 PIN 6자리" aria-label={`${a.name} 새 PIN`} value={pinFor.pin} onChange={(e) => setPinFor({ id: a.user_id, pin: digits(e.target.value) })} autoFocus />

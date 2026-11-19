@@ -151,7 +151,9 @@ export default function App() {
   if (session === undefined) return <main className="empty">불러오는 중…</main>
   if (!session || !role) return <LoginScreen />
 
-  const tabs: Tab[] = role === 'admin' ? ['입출고', 'RI', '통계', '달력', '검색', '올리기', '직원'] : ['입출고', 'RI', '통계', '달력', '검색']
+  // 직원은 관리자가 숨긴 탭을 빼고 본다(화면만 숨김: 데이터 읽기 권한은 그대로)
+  const tabs: Tab[] = role === 'admin' ? ['입출고', 'RI', '통계', '달력', '검색', '올리기', '직원']
+    : (['입출고', 'RI', '통계', '달력', '검색'] as const).filter((t) => !(me?.hidden_tabs as string[] | undefined)?.includes(t))
   const can = (p: 'container' | 'calendar') => role === 'admin' || !!me?.perms.includes(p)
   const current = tabs.includes(tab) ? tab : '입출고'
   const goTab = (t: Tab) => {

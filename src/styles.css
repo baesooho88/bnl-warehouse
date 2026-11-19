@@ -181,6 +181,11 @@ body:has(.detail) { overflow: hidden; }
 .staff-card .top { justify-content: space-between; color: var(--text); font-size: 16px; }
 .staff-perm { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; }
 .staff-perm input { width: 22px; height: 22px; }
+.staff-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 6px; font-size: 15px; }
+.staff-tabs > span { margin-right: 4px; }
+.chip { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-weight: 600; }
+.chip[aria-pressed='true'] { background: var(--in); border-color: var(--in); color: #fff; }
+.chip:disabled { opacity: .7; }
 .staff-actions { display: flex; gap: 8px; margin-top: 6px; }
 .staff-actions .btn { flex: 1; }
 .staff-form { display: flex; flex-direction: column; gap: 8px; }
