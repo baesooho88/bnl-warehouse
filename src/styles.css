@@ -181,6 +181,7 @@ body:has(.detail) { overflow: hidden; }
 .staff-card .top { justify-content: space-between; color: var(--text); font-size: 16px; }
 .staff-perm { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; }
 .staff-perm input { width: 22px; height: 22px; }
+.cntr-link { padding: 0; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; text-align: left; }
 .staff-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 6px; font-size: 15px; }
 .staff-tabs > span { margin-right: 4px; }
 .chip { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-weight: 600; }

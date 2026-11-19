@@ -6,6 +6,7 @@ import { num } from '../components/format'
 import type { Inbound, Outbound } from '../domain/types'
 import { formatMD, todayIso } from '../lib/dates'
 import { splitPhones } from '../lib/phone'
+import { terminalLink } from '../lib/terminals'
 import { needsInspection } from '../lib/urgent'
 import { useInspections } from '../inspection/useInspections'
 
@@ -112,6 +113,14 @@ function OutboundBody({ x }: { x: Outbound }) {
 function ContainerTable({ x, bls, canEdit }: { x: Inbound; bls: string[]; canEdit: boolean }) {
   const { statuses, reload } = useContainerStatuses([x.bl])
   const [message, setMessage] = useState('')
+  const [tip, setTip] = useState('')
+  const link = terminalLink(x.terminal)
+  // 부두 조회 화면은 번호를 미리 넣어 열 수 없어서, 번호를 복사해 두고 연다
+  function lookup(no: string) {
+    void navigator.clipboard?.writeText(no).catch(() => {})
+    window.open(link!.url, '_blank', 'noopener')
+    setTip(`${no} 번호를 복사했어요. ${link!.name} 화면의 컨테이너 번호 칸에 붙여 넣어 조회하세요`)
+  }
   async function change(no: string, status: ContainerStatus) {
     setMessage('')
     try {
@@ -134,7 +143,7 @@ function ContainerTable({ x, bls, canEdit }: { x: Inbound; bls: string[]; canEdi
             const st = statuses.get(statusKey(x.bl, c.no)) ?? '입고예정'
             return (
               <tr key={i}>
-                <td>{i + 1}</td><td>{c.no}</td><td>{c.type ?? '-'}</td>
+                <td>{i + 1}</td><td>{link ? <button className="link cntr-link" onClick={() => lookup(c.no)} aria-label={`${c.no} ${link.name}에서 조회`}>{c.no} ↗</button> : c.no}</td><td>{c.type ?? '-'}</td>
                 <td>{canEdit
                   ? <select aria-label={`${c.no} 상태`} value={st} onChange={(e) => void change(c.no, e.target.value as ContainerStatus)}>{CONTAINER_STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
                   : st}</td>
@@ -143,6 +152,7 @@ function ContainerTable({ x, bls, canEdit }: { x: Inbound; bls: string[]; canEdi
           })}
         </tbody>
       </table>
+      {link && <p className="hint" role="status">{tip || `컨테이너 번호를 누르면 ${link.name} 조회 화면이 열려요`}</p>}
       {message && <p className="sheet-msg" role="alert">{message}</p>}
     </>
   )
