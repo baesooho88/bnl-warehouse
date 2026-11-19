@@ -25,6 +25,7 @@ const dateParam = () => {
   const d = new URLSearchParams(location.search).get('date')
   return d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null
 }
+const cntrParam = () => new URLSearchParams(location.search).get('cntr')
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined) // undefined = 확인 중
@@ -34,6 +35,7 @@ export default function App() {
   const touch = useRef<{ x: number; y: number } | null>(null)
   const [date, setDate] = useState(() => dateParam() ?? todayIso(new Date()))
   const [detail, setDetail] = useState<Detail | null>(null)
+  const [focusCntr, setFocusCntr] = useState(() => (dateParam() ? cntrParam() : null)) // 알림으로 연 컨테이너: 그 B/L을 띄운다
   const [dataVersion, setDataVersion] = useState(0)
   const [status, setStatus] = useState<SyncStatus>(sync.status())
   const [pushOn, setPushOn] = useState<boolean | null>(null)
@@ -107,16 +109,18 @@ export default function App() {
         setDetail(null)
         setTabState('입출고')
         setDate(e.data.date)
+        setFocusCntr(typeof e.data.cntr === 'string' ? e.data.cntr : null)
       }
     }
     navigator.serviceWorker.addEventListener('message', onMessage)
     return () => navigator.serviceWorker.removeEventListener('message', onMessage)
   }, [])
 
-  const openIn = useCallback((item: Inbound) => setDetail({ kind: 'in', item }), [])
+  const openIn = useCallback((item: Inbound, bls?: string[]) => setDetail({ kind: 'in', item, bls }), [])
+  const focused = useCallback(() => setFocusCntr(null), [])
   const openOut = useCallback((item: Outbound) => setDetail({ kind: 'out', item }), [])
   const closeDetail = useCallback(() => setDetail(null), [])
-  const changeDate = useCallback((d: string) => { fixedDate.current = false; setDate(d) }, [])
+  const changeDate = useCallback((d: string) => { fixedDate.current = false; setFocusCntr(null); setDate(d) }, [])
   const dataChanged = useCallback(() => {
     setDataVersion((v) => v + 1)
     void jumpToLatest()
@@ -168,7 +172,8 @@ export default function App() {
       {current === '입출고' && permission === 'default' && pushOn === false && VAPID_KEY && <PushCard onEnable={() => void enablePush()} />}
       {current === '입출고' && (
         <ListScreen date={date} onDateChange={changeDate} onOpenIn={openIn} onOpenOut={openOut}
-          onGoUpload={() => goTab(role === 'admin' ? '올리기' : '입출고')} canUpload={role === 'admin'} dataVersion={dataVersion} />
+          onGoUpload={() => goTab(role === 'admin' ? '올리기' : '입출고')} canUpload={role === 'admin'} dataVersion={dataVersion}
+          focusCntr={focusCntr} onFocused={focused} />
       )}
       {current === 'RI' && <RiScreen />}
       {current === '검색' && <SearchScreen />}

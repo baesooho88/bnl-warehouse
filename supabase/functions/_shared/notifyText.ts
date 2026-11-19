@@ -23,7 +23,7 @@ export function buildMessage(s: ContainerArrival): Message {
     const status = s.status ?? '반입됨'
     if (status !== '입고됨' && status !== '반입됨') throw new Error('상태가 올바르지 않아요')
     const body = `컨테이너 ${list[0]}${list.length > 1 ? ` 외 ${list.length - 1}개` : ''} ${status === '입고됨' ? '입고' : '반입'}됐어요`
-    return { title: '(주)부산신항로지텍', body, tag: 'bnl-container', url: `?date=${s.date}` }
+    return { title: '(주)부산신항로지텍', body, tag: 'bnl-container', url: `?date=${s.date}&cntr=${list[0]}` } // 알림을 누르면 그 컨테이너의 B/L로
   }
   // 업로드 알림은 없앴다(2026-11-16). 캐시된 이전 앱이 보내도 울리지 않게 거부한다.
   throw new Error('알림 종류가 올바르지 않아요')

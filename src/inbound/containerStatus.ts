@@ -13,9 +13,10 @@ export async function fetchStatuses(client: SupabaseClient, bls: string[]): Prom
   return new Map((data as { bl: string; container_no: string; status: ContainerStatus }[]).map((r) => [statusKey(r.bl, r.container_no), r.status]))
 }
 
-/** 관리자 전용(RLS) */
-export async function setStatus(client: SupabaseClient, bl: string, no: string, status: ContainerStatus): Promise<void> {
-  const { error } = await client.from('container_status').upsert({ bl, container_no: no, status }, { onConflict: 'bl,container_no' })
+/** 관리자 전용(RLS). 같은 컨테이너에 실린 B/L 여럿을 한 번에 바꿀 수 있다. */
+export async function setStatus(client: SupabaseClient, bls: string | string[], no: string, status: ContainerStatus): Promise<void> {
+  const rows = [...new Set([bls].flat())].map((bl) => ({ bl, container_no: no, status }))
+  const { error } = await client.from('container_status').upsert(rows, { onConflict: 'bl,container_no' })
   if (error) throw new Error(error.message)
 }
 

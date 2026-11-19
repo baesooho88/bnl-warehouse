@@ -9,7 +9,8 @@ import { splitPhones } from '../lib/phone'
 import { needsInspection } from '../lib/urgent'
 import { useInspections } from '../inspection/useInspections'
 
-export type Detail = { kind: 'in'; item: Inbound } | { kind: 'out'; item: Outbound }
+// bls: 같은 컨테이너에 실린 B/L들(혼재). 상태를 바꾸면 모두 함께 바뀐다.
+export type Detail = { kind: 'in'; item: Inbound; bls?: string[] } | { kind: 'out'; item: Outbound }
 
 function WithPhones({ text }: { text: string | null }) {
   if (!text) return <>-</>
@@ -61,7 +62,7 @@ export function DetailScreen({ detail, onBack, canEdit = false }: { detail: Deta
         <strong>{detail.kind === 'in' ? `입고·${detail.item.port}` : '출고'}</strong>
       </header>
       <div className="body">
-        {detail.kind === 'in' ? <InboundBody x={detail.item} canEdit={canEdit} /> : <OutboundBody x={detail.item} />}
+        {detail.kind === 'in' ? <InboundBody x={detail.item} bls={detail.bls ?? [detail.item.bl]} canEdit={canEdit} /> : <OutboundBody x={detail.item} />}
         {Object.keys(raw).length > 0 && (
           <>
             <h2>원문 (변환하지 못한 값)</h2>
@@ -73,7 +74,7 @@ export function DetailScreen({ detail, onBack, canEdit = false }: { detail: Deta
   )
 }
 
-function InboundBody({ x, canEdit }: { x: Inbound; canEdit: boolean }) {
+function InboundBody({ x, bls, canEdit }: { x: Inbound; bls: string[]; canEdit: boolean }) {
   return (
     <>
       <h2>{x.item ?? '(품명 없음)'}</h2>
@@ -83,8 +84,9 @@ function InboundBody({ x, canEdit }: { x: Inbound; canEdit: boolean }) {
         ['부두 및 창고', x.terminal], ['도착지', x.destination], ['비고', <WithPhones text={x.note} />],
       ]} />
       <h2>컨테이너 {x.containers.length}대</h2>
+      {bls.length > 1 && <p className="hint">같은 컨테이너에 B/L {bls.length}건이 실려 있어요{canEdit && ' — 상태를 바꾸면 모두 함께 바뀌어요'}</p>}
       {x.containers.length > 0 && (
-        <ContainerTable x={x} canEdit={canEdit} />
+        <ContainerTable x={x} bls={bls} canEdit={canEdit} />
       )}
     </>
   )
@@ -107,13 +109,13 @@ function OutboundBody({ x }: { x: Outbound }) {
 }
 
 /** 컨테이너별 상태. 관리자는 바꿀 수 있고, 반입됨으로 바꾸면 직원들에게 알림을 보낸다(입고됨은 알림 없음). */
-function ContainerTable({ x, canEdit }: { x: Inbound; canEdit: boolean }) {
+function ContainerTable({ x, bls, canEdit }: { x: Inbound; bls: string[]; canEdit: boolean }) {
   const { statuses, reload } = useContainerStatuses([x.bl])
   const [message, setMessage] = useState('')
   async function change(no: string, status: ContainerStatus) {
     setMessage('')
     try {
-      await setStatus(supabase, x.bl, no, status)
+      await setStatus(supabase, bls, no, status)
       reload()
       if (status === '반입됨') {
         const { error } = await supabase.functions.invoke('notify', { body: { kind: 'container', date: x.baseDate, containers: [no], status } })

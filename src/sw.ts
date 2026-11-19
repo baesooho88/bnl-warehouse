@@ -30,13 +30,14 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const url = String(event.notification.data?.url ?? '')
-  const date = new URLSearchParams(url.replace(/^\?/, '')).get('date')
+  const q = new URLSearchParams(url.replace(/^\?/, ''))
+  const date = q.get('date')
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     const win = wins[0] as WindowClient | undefined
     if (win) {
       await win.focus()
-      if (date) win.postMessage({ type: 'open-date', date })
+      if (date) win.postMessage({ type: 'open-date', date, cntr: q.get('cntr') })
       return
     }
     await self.clients.openWindow(self.registration.scope + url)

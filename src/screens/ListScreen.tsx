@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DateNav } from '../components/DateNav'
 import { tons } from '../components/format'
-import { InboundCard } from '../components/InboundCard'
+import { InboundCard, InboundGroupCard } from '../components/InboundCard'
+import { groupInbound } from '../lib/inboundGroups'
 import { useContainerStatuses } from '../inbound/useContainerStatuses'
 import { useInspections } from '../inspection/useInspections'
 import { OutboundGroups } from '../components/OutboundGroups'
@@ -14,15 +15,19 @@ type Filter = '전체' | '입고' | '출고'
 export function ListScreen(props: {
   date: string
   onDateChange: (d: string) => void
-  onOpenIn: (x: Inbound) => void
+  onOpenIn: (x: Inbound, bls?: string[]) => void
   onOpenOut: (x: Outbound) => void
   onGoUpload: () => void
   canUpload: boolean
   dataVersion: number
+  focusCntr?: string | null // 알림으로 연 컨테이너
+  onFocused?: () => void
 }) {
-  const { date, dataVersion } = props
+  const { date, dataVersion, focusCntr, onFocused, onOpenIn } = props
   const [data, setData] = useState<DayData | null>(null)
   const [filter, setFilter] = useState<Filter>('전체')
+  const [open, setOpen] = useState<Set<string>>(() => new Set())
+  const toggle = (k: string) => setOpen((s) => { const n = new Set(s); if (!n.delete(k)) n.add(k); return n })
 
   useEffect(() => {
     let alive = true
@@ -31,6 +36,19 @@ export function ListScreen(props: {
   }, [date, dataVersion])
 
   const inbound = data?.inbound ?? []
+  const groups = useMemo(() => groupInbound(data?.inbound ?? []), [data])
+
+  // 알림의 컨테이너가 이 날짜에 있으면: B/L 한 건이면 상세로, 여러 건이면 그 묶음을 펼쳐 보여 준다. 없으면 데이터가 들어올 때 다시 본다.
+  useEffect(() => {
+    if (!focusCntr) return
+    const g = groups.find((xs) => xs.some((x) => x.containers.some((c) => c.no === focusCntr)))
+    if (!g) return
+    onFocused?.()
+    if (g.length === 1) return onOpenIn(g[0])
+    setFilter('전체')
+    setOpen((s) => new Set(s).add(g[0].id))
+    requestAnimationFrame(() => document.getElementById(`in-${g[0].id}`)?.scrollIntoView({ block: 'start' }))
+  }, [focusCntr, groups, onFocused, onOpenIn])
   const { statuses } = useContainerStatuses(inbound.map((x) => x.bl))
   const outbound = data?.outbound ?? []
   const { done } = useInspections()
@@ -62,7 +80,9 @@ export function ListScreen(props: {
               <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>{f}</button>
             ))}
           </div>
-          {filter !== '출고' && inbound.map((x) => <InboundCard key={x.id} item={x} onOpen={props.onOpenIn} statuses={statuses} />)}
+          {filter !== '출고' && groups.map((g) => (g.length === 1
+            ? <InboundCard key={g[0].id} item={g[0]} onOpen={onOpenIn} statuses={statuses} />
+            : <InboundGroupCard key={g[0].id} items={g} open={open.has(g[0].id)} onToggle={() => toggle(g[0].id)} onOpen={onOpenIn} statuses={statuses} />))}
           {filter !== '입고' && <OutboundGroups key={props.date} items={outbound} onOpen={props.onOpenOut} inspected={done} />}
         </>
       )}

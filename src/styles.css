@@ -307,6 +307,9 @@ body:has(.detail) { overflow: hidden; }
 .note-box { margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: var(--in-soft); color: var(--text); font-size: 14px; word-break: break-word; }
 .note-box b { color: var(--in); margin-right: 4px; }
 .card.in.urgent { border-left-color: var(--urgent); background: var(--urgent-soft); }
+.in-group { padding: 0; overflow: hidden; }
+.in-group-head { display: block; width: 100%; padding: 12px 14px; border: 0; background: none; color: inherit; text-align: left; }
+.in-group .og-row { padding-left: 14px; }
 
 .badge.inspect { background: #fff3bf; color: #7a5a00; }
 @media (prefers-color-scheme: dark) { .badge.inspect { background: #4a3b00; color: #ffe08a; } }

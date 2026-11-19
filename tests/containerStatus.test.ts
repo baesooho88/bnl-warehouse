@@ -17,5 +17,8 @@ test('setStatus: (B/L, 번호)로 덮어쓰기', async () => {
   const sent: unknown[] = []
   const client = { from: () => ({ upsert: async (row: unknown, opt: unknown) => { sent.push([row, opt]); return { error: null } } }) } as unknown as SupabaseClient
   await setStatus(client, 'B1', 'C1', '입고됨')
-  expect(sent).toEqual([[{ bl: 'B1', container_no: 'C1', status: '입고됨' }, { onConflict: 'bl,container_no' }]])
+  expect(sent).toEqual([[[{ bl: 'B1', container_no: 'C1', status: '입고됨' }], { onConflict: 'bl,container_no' }]])
+  sent.length = 0
+  await setStatus(client, ['B1', 'B2', 'B1'], 'C1', '반입됨') // 혼재: 같은 컨테이너의 B/L 모두
+  expect((sent[0] as unknown[][])[0]).toEqual([{ bl: 'B1', container_no: 'C1', status: '반입됨' }, { bl: 'B2', container_no: 'C1', status: '반입됨' }])
 })

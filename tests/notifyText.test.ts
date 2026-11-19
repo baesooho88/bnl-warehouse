@@ -9,7 +9,7 @@ test('업로드 알림은 없앴다: 이전 앱이 보내도, 형식이 틀려�
 
 test('컨테이너 반입 알림: 번호만 담고, 여러 개면 "외 N개"', () => {
   expect(buildMessage({ kind: 'container', date: '2026-11-10', containers: ['TEST1234567'] })).toEqual({
-    title: '(주)부산신항로지텍', body: '컨테이너 TEST1234567 반입됐어요', tag: 'bnl-container', url: '?date=2026-11-10',
+    title: '(주)부산신항로지텍', body: '컨테이너 TEST1234567 반입됐어요', tag: 'bnl-container', url: '?date=2026-11-10&cntr=TEST1234567',
   })
   expect(buildMessage({ kind: 'container', date: '2026-11-10', containers: ['TEST1234567', 'ABCU0000001', 'ABCU0000002'] }).body).toBe('컨테이너 TEST1234567 외 2개 반입됐어요')
 })
