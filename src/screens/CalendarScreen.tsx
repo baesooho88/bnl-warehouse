@@ -18,9 +18,13 @@ const fetchHolidays = () =>
   }).catch((e) => { holidaysReq = null; throw e }))
 const typeClass = (t: string) => (t === '일정' ? 'event' : t === '연차' ? 'full' : t === '기타' ? 'etc' : 'half')
 
-export function CalendarScreen({ canEdit }: { canEdit: boolean }) {
+export function CalendarScreen({ canEdit, swipeRef }: { canEdit: boolean; swipeRef: { current: ((dir: 1 | -1) => void) | null } }) {
   const today = todayIso(new Date())
   const [ym, setYm] = useState(() => monthOf(today))
+  useEffect(() => {
+    swipeRef.current = (dir) => setYm((m) => shiftMonth(m, dir))
+    return () => { swipeRef.current = null }
+  }, [swipeRef])
   const [items, setItems] = useState<Vacation[]>([])
   const [state, setState] = useState<'loading' | 'ok' | 'offline' | 'error'>('loading')
   const [openDate, setOpenDate] = useState<string | null>(null)

@@ -3,7 +3,7 @@ import { DateNav } from '../components/DateNav'
 import { setDone } from '../inspection/inspections'
 import { fetchRi, latestRiDate, onRiChange } from '../inspection/ri'
 import { useInspections } from '../inspection/useInspections'
-import { todayIso } from '../lib/dates'
+import { addDays, todayIso } from '../lib/dates'
 import { riQty, riWms, type RiItem } from '../parsers/ri'
 import { supabase } from '../storage/cloud/supabase'
 
@@ -13,8 +13,12 @@ const time = (iso: string) => {
 }
 
 /** RI: 관리자가 올린 RI 작업표만(B/L 하나에 카드 하나). 검사 완료는 B/L 단위로 모두에게 바로 반영된다(알림은 없음). */
-export function RiScreen() {
+export function RiScreen({ swipeRef }: { swipeRef: { current: ((dir: 1 | -1) => void) | null } }) {
   const [date, setDate] = useState<string | null>(null)
+  useEffect(() => {
+    swipeRef.current = (dir) => setDate((d) => d && addDays(d, dir))
+    return () => { swipeRef.current = null }
+  }, [swipeRef])
   const [items, setItems] = useState<RiItem[] | null>(null)
   const { done, reload } = useInspections()
   const [busy, setBusy] = useState<string | null>(null)

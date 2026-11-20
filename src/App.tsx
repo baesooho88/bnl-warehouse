@@ -5,8 +5,8 @@ import { PushCard } from './components/PushCard'
 import { StatusBar } from './components/StatusBar'
 import { TabBar, type Tab } from './components/TabBar'
 import type { Inbound, Outbound } from './domain/types'
-import { todayIso } from './lib/dates'
-import { swipeTab } from './lib/swipe'
+import { addDays, todayIso } from './lib/dates'
+import { swipeDir } from './lib/swipe'
 import { isPushSubscribed, pushOptedOut, pushSupported, setPushOptedOut, shouldRestorePush, subscribePush, unsubscribePush } from './push/push'
 import { local, remote, repo, sync } from './repo'
 import { CalendarScreen } from './screens/CalendarScreen'
@@ -35,6 +35,7 @@ export default function App() {
   const [tab, setTabState] = useState<Tab>('입출고')
   const [slide, setSlide] = useState<'' | 'from-right' | 'from-left'>('')
   const touch = useRef<{ x: number; y: number } | null>(null)
+  const swipeTo = useRef<((dir: 1 | -1) => void) | null>(null) // RI·달력 화면이 자기 날짜/달 넘기기를 걸어 둔다
   const [date, setDate] = useState(() => dateParam() ?? todayIso(new Date()))
   const [detail, setDetail] = useState<Detail | null>(null)
   const [focusCntr, setFocusCntr] = useState(() => (dateParam() ? cntrParam() : null)) // 알림으로 연 컨테이너: 입출고 화면에서 그 컨테이너를 반짝인다
@@ -162,15 +163,23 @@ export default function App() {
     setTabState(t)
   }
   const onTouchStart = (e: React.TouchEvent) => {
-    // 팝업(휴가 입력 등) 안에서 민 것은 탭 넘기기가 아니다
+    // 팝업(휴가 입력 등) 안에서 민 것은 날짜 넘기기가 아니다
     touch.current = (e.target as Element).closest('[role=dialog]') ? null : { x: e.touches[0].clientX, y: e.touches[0].clientY }
   }
   const onTouchEnd = (e: React.TouchEvent) => {
     if (!touch.current) return
     const t = e.changedTouches[0]
-    const next = swipeTab(tabs, current, { dx: t.clientX - touch.current.x, dy: t.clientY - touch.current.y, startX: touch.current.x, width: window.innerWidth })
+    // 탭 안에서 날짜 이동: 입출고·RI는 하루, 달력은 한 달
+    const dir = swipeDir({ dx: t.clientX - touch.current.x, dy: t.clientY - touch.current.y, startX: touch.current.x, width: window.innerWidth })
     touch.current = null
-    if (next) goTab(next)
+    if (!dir) return
+    if (current === '입출고') changeDate(addDays(date, dir))
+    else if (swipeTo.current) swipeTo.current(dir)
+    else return
+    // 탭 전환과 같은 슬라이드. 화면을 다시 만들지 않으려고 key 대신 Web Animations로 재생
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      e.currentTarget.animate([{ transform: `translateX(${dir * 32}px)`, opacity: 0.4 }, {}], { duration: 220, easing: 'ease-out' })
+    }
   }
 
   return (
@@ -185,10 +194,10 @@ export default function App() {
           onGoUpload={() => goTab(role === 'admin' ? '올리기' : '입출고')} canUpload={role === 'admin'} dataVersion={dataVersion}
           focusCntr={focusCntr} onFocused={focused} />
       )}
-      {current === 'RI' && <RiScreen />}
+      {current === 'RI' && <RiScreen swipeRef={swipeTo} />}
       {current === '검색' && <SearchScreen />}
       {current === '통계' && <StatsScreen dataVersion={dataVersion} />}
-      {current === '달력' && <CalendarScreen canEdit={can('calendar')} />}
+      {current === '달력' && <CalendarScreen canEdit={can('calendar')} swipeRef={swipeTo} />}
       {current === '올리기' && role === 'admin' && <UploadScreen onDataChanged={dataChanged} dataVersion={dataVersion} />}
       {current === '직원' && role === 'admin' && <StaffScreen />}
       </div>
