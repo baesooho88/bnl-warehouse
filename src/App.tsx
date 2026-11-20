@@ -6,7 +6,7 @@ import { StatusBar } from './components/StatusBar'
 import { TabBar, type Tab } from './components/TabBar'
 import type { Inbound, Outbound } from './domain/types'
 import { addDays, todayIso } from './lib/dates'
-import { swipeDir } from './lib/swipe'
+import { slideIn, swipeDir } from './lib/swipe'
 import { isPushSubscribed, pushOptedOut, pushSupported, setPushOptedOut, shouldRestorePush, subscribePush, unsubscribePush } from './push/push'
 import { local, remote, repo, sync } from './repo'
 import { CalendarScreen } from './screens/CalendarScreen'
@@ -176,10 +176,7 @@ export default function App() {
     if (current === '입출고') changeDate(addDays(date, dir))
     else if (swipeTo.current) swipeTo.current(dir)
     else return
-    // 탭 전환과 같은 슬라이드. 화면을 다시 만들지 않으려고 key 대신 Web Animations로 재생
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      e.currentTarget.animate([{ transform: `translateX(${dir * 32}px)`, opacity: 0.4 }, {}], { duration: 220, easing: 'ease-out' })
-    }
+    slideIn(e.currentTarget, dir)
   }
 
   return (

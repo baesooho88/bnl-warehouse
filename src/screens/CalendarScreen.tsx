@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { VacationSheet } from '../components/VacationSheet'
 import { todayIso } from '../lib/dates'
+import { slideIn } from '../lib/swipe'
 import { supabase } from '../storage/cloud/supabase'
 import { cellSummary, dayEntries, monthGrid, monthOf, shiftMonth } from '../vacation/calendar'
 import { fetchMonth, onVacationChange, recentNames, type Vacation } from '../vacation/vacations'
@@ -78,9 +79,9 @@ export function CalendarScreen({ canEdit, swipeRef }: { canEdit: boolean; swipeR
   return (
     <main>
       <div className="cal-head">
-        <button onClick={() => setYm(shiftMonth(ym, -1))} aria-label="이전 달">◀</button>
+        <button onClick={(e) => { setYm(shiftMonth(ym, -1)); slideIn(e.currentTarget, -1) }} aria-label="이전 달">◀</button>
         <strong>{+ym.slice(0, 4)}년 {+ym.slice(5, 7)}월</strong>
-        <button onClick={() => setYm(shiftMonth(ym, 1))} aria-label="다음 달">▶</button>
+        <button onClick={(e) => { setYm(shiftMonth(ym, 1)); slideIn(e.currentTarget, 1) }} aria-label="다음 달">▶</button>
       </div>
       <div className="cal-legend"><span className="cal-name full">연차</span><span className="cal-name half">반차</span><span className="cal-name etc">기타</span><span className="cal-name event">일정</span></div>
       {state === 'offline' || state === 'error' ? (

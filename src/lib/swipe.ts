@@ -7,3 +7,10 @@ export function swipeDir(g: { dx: number; dy: number; startX: number; width: num
   if (g.startX < EDGE || g.startX > g.width - EDGE) return null
   return g.dx < 0 ? 1 : -1
 }
+
+/** 날짜/달을 넘길 때 탭 화면을 탭 전환과 같은 슬라이드로 들인다. 화면을 다시 만들지 않으려고 key 대신 Web Animations로 재생 */
+export function slideIn(from: Element, dir: 1 | -1) {
+  const page = from.closest('.tab-page')
+  if (!page || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  page.animate([{ transform: `translateX(${dir * 32}px)`, opacity: 0.4 }, {}], { duration: 220, easing: 'ease-out' })
+}
